@@ -70,6 +70,6 @@ def softmax_entropy(x):
 def get_available_corruptions(dataset, max_use_count):
     available_corruptions = []
     for corruption_type in dataset.keys():
-        if dataset[corruption_type]['use_count'] < max_use_count-1:
+        if dataset[corruption_type]['use_count'] < max_use_count:
             available_corruptions.append(corruption_type)
     return available_corruptions

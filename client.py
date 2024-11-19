@@ -50,23 +50,23 @@ class Client(object):
         self.acc_list.append(correct / total)
         self.model.to('cpu')
 
-    def setup_optimizer(params, cfg):
+    def setup_optimizer(self, params, cfg):
         """Set up optimizer for tent adaptation.
         For best results, try tuning the learning rate and batch size.
         """
-        if cfg.optim_method == 'Adam':
+        if cfg.OPTIM.METHOD == 'Adam':
             return optim.Adam(params,
-                        lr=cfg.optim_lr,
-                        betas=(cfg.optim_beta, 0.999),
-                        weight_decay=cfg.optim_wd)
+                        lr=cfg.OPTIM.LR,
+                        betas=(cfg.OPTIM.BETA, 0.999),
+                        weight_decay=cfg.OPTIM.WD)
         
-        elif cfg.optim_method == 'SGD':
+        elif cfg.OPTIM.METHOD == 'SGD':
             return optim.SGD(params,
-                    lr=cfg.optim_lr,
-                    momentum=cfg.optim_momentum,
-                    dampening=cfg.optim_dampening,
-                    weight_decay=cfg.optim_wd,
-                    nesterov=cfg.optim_nesterov)
+                    lr=cfg.OPTIM.LR,
+                    momentum=cfg.OPTIM.MOMENTUM,
+                    dampening=cfg.OPTIM.DAMPENING,
+                    weight_decay=cfg.OPTIM.WD,
+                    nesterov=cfg.OPTIM.NESTEROV)
         else:
             raise NotImplementedError(f"Unknown optimizer: {cfg.optim_method}")
     

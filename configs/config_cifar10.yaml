@@ -1,0 +1,50 @@
+MODEL:
+  ARCH: "Standard"            # Model architecture: 'Standard', 'ResNet', etc.
+
+CORRUPTION:
+  DATASET: "cifar10"          # Dataset for evaluation: 'cifar10', 'cifar100'
+  TYPE:                       # Types of corruption for evaluation
+    - "gaussian_noise"
+    - "shot_noise"
+    - "impulse_noise"
+    - "defocus_blur"
+    - "glass_blur"
+    - "motion_blur"
+    - "zoom_blur"
+    - "snow"
+    - "frost"
+    - "fog"
+    - "brightness"
+    - "contrast"
+    - "elastic_transform"
+    - "pixelate"
+    - "jpeg_compression"
+  SEVERITY:                   # Severity levels of corruptions (1: least severe, 5: most severe)
+    - 5
+  NUM_EX: 10000               # Number of examples to evaluate (default: 10000)
+
+BN:
+  EPS: 1e-5                   # BatchNorm epsilon value
+  MOM: 0.1                    # BatchNorm momentum (1 - BN momentum in Caffe2)
+
+OPTIM:
+  STEPS: 1                    # Number of updates per batch
+  LR: 1e-3                    # Learning rate
+  METHOD: "Adam"              # Optimizer type: ['Adam', 'SGD']
+  BETA: 0.9                   # Beta value for Adam optimizer
+  MOMENTUM: 0.9               # Momentum for SGD optimizer
+  DAMPENING: 0.0              # Dampening for momentum
+  NESTEROV: true              # Use Nesterov momentum for SGD optimizer
+  WD: 0.0                     # Weight decay (L2 regularization)
+  
+MISC:
+  NUM_CLIENTS: 20             # Number of clients
+  BATCH_SIZE: 10              # Batch size for each client
+  NUM_STEPS: 750              # Number of steps for each client
+
+  RNG_SEED : 1
+  SAVE_DIR : "./output"
+  DATA_DIR : "./data"
+  CKPT_DIR : "./ckpt"
+
+ 

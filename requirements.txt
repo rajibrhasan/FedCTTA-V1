@@ -12,3 +12,4 @@ git+https://github.com/fra31/auto-attack.git@a39220048b3c9f2cca9a4d3a54604793c68
 gdown==5.1.0
 pyyaml
 yacs==0.1.8
+wandb

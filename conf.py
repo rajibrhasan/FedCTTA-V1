@@ -88,14 +88,17 @@ _C.CORRUPTION.NUM_EX = 10000
 
 _C.MISC = CfgNode()
 _C.MISC.NUM_CLIENTS =  20             # Number of clients
-_C.MISC.BATCH_SIZE = 10              # Batch size for each client
+_C.MISC.BATCH_SIZE = 100              # Batch size for each client
 _C.MISC.NUM_STEPS = 750              # Number of steps for each client
+_C.MISC.SP_HETEROGINITY = 0.2
 
-_C.MISC.RNG_SEED = 1
+_C.MISC.RNG_SEED = 2
 _C.MISC.SAVE_DIR = "./output"
 _C.MISC.DATA_DIR  =  "./data"
 _C.MISC.CKPT_DIR  = "./ckpt"
 _C.MISC.LOG_DEST = 'log.txt'
+_C.MISC.MOMENTUM_SRC = 0.999
+_C.MISC.IID = True
 
 _C.CUDNN = CfgNode()
 
@@ -151,13 +154,14 @@ def load_cfg_fom_args(description="Config options."):
     """Load config from command line args and set any specified options."""
     current_time = datetime.now().strftime("%y%m%d_%H%M%S")
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument("--cfg", dest="cfg_file", type=str, default='configs/config_cifar10.yaml',
+    parser.add_argument("--cfg", dest="cfg_file", type=str, default='configs/cifar10.yaml',
                         help="Config file location")
+    parser.add_argument("--opts", nargs='+', help="Modify config options using the format KEY VALUE")
 
     args = parser.parse_args()
 
     merge_from_file(args.cfg_file)
-    # cfg.merge_from_list(args.opts)
+    cfg.merge_from_list(args.opts)
 
     log_dest = os.path.basename(args.cfg_file)
     log_dest = log_dest.replace('.yaml', '_{}.txt'.format(current_time))

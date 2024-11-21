@@ -40,7 +40,7 @@ OPTIM:
 MISC:
   NUM_CLIENTS: 20             # Number of clients
   BATCH_SIZE: 100              # Batch size for each client
-  NUM_STEPS: 75            # Number of steps for each client
+  NUM_STEPS: 75          # Number of steps for each client
 
   RNG_SEED : 1
   SAVE_DIR : "./output"

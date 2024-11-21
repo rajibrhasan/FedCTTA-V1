@@ -132,6 +132,16 @@ class Client(object):
                         names.append(f"{nm}.{np}")
         return params, names
 
+    def extract_bn_weights_and_biases(self):
+        bn_params = {}
+        for name, layer in self.model_ema.named_modules():
+            if isinstance(layer, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)):
+                gamma = layer.weight.data.cpu()  # Scale (weight)
+                beta = layer.bias.data.cpu()    # Offset (bias)
+                weights = torch.cat((gamma, beta), dim =0)
+                bn_params[name] = weights
+        return bn_params
+
     def get_state_dict(self):
         return self.model.state_dict()
     

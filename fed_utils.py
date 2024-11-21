@@ -118,3 +118,12 @@ def create_schedule_iid(num_clients, timesteps, domains):
         for i in range (num_clients):
             client_schedule[i].append(selected_domain)
     return client_schedule
+
+def cosine_similarity(bn_params1, bn_params2):
+    assert bn_params1.keys() == bn_params2.keys(), "Keys must match"
+    similarities = []
+    for layer_name in bn_params1:
+        similarity = nn.functional.cosine_similarity(bn_params1[layer_name], bn_params2[layer_name], dim = 0)
+        similarities.append(similarity.item())  
+        
+    return sum(similarities)/len(similarities)

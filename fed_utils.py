@@ -2,10 +2,7 @@ import torch
 import torch.nn as nn
 import random
 from robustbench.data import load_cifar10c, load_cifar100c
-
-def softmax_entropy(x, x_ema) -> torch.Tensor:
-    return -(x_ema.softmax(1) * x.log_softmax(1)).sum(1)
-
+    
 @torch.no_grad()
 def ema_update_model(model_to_update, model_to_merge, momentum, device, update_all=False):
     if momentum < 1.0:
@@ -37,10 +34,6 @@ def split_indices_into_batches(total_indices, batch_size):
         index_batches.append(batch_indices)
 
     return index_batches
-
-# def softmax_entropy(x):
-#     """Entropy of softmax distribution from logits."""
-#     return -(x.softmax(1) * x.log_softmax(1)).sum(1)
 
 def get_available_corruptions(dataset, max_use_count):
     available_corruptions = []

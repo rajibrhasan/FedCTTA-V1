@@ -30,8 +30,6 @@ def main(severity, device):
 
     for i in range(cfg.MISC.NUM_CLIENTS):
         clients.append(Client(f'client_{i}', deepcopy(global_model), cfg, device))
-    
-    client_schedule = None
 
     if cfg.MISC.IID:
         client_schedule = create_schedule_iid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE)
@@ -41,38 +39,46 @@ def main(severity, device):
     logger.info('Client schedule: \n')
     logger.info(client_schedule)
     
-    for i in tqdm(range(cfg.MISC.NUM_STEPS)):
+    for t in tqdm(range(cfg.MISC.NUM_STEPS)):
         w_locals = []
 
         for idx, client in enumerate(clients):
-            selected_domain = dataset[client_schedule[idx][i]]
+            selected_domain = dataset[client_schedule[idx][t]]
             cur_idx = selected_domain['indices'][selected_domain['use_count']]
-            client.x = selected_domain['all_x'][cur_idx]
-            client.y = selected_domain['all_y'][cur_idx]
-            client.adapt()
+            x = selected_domain['all_x'][cur_idx]
+            y = selected_domain['all_y'][cur_idx]
+            client.domain_list.append(client_schedule[idx][t])
+            client.adapt(x, y)
             w_locals.append(deepcopy(client.model_ema.state_dict()))
             selected_domain['use_count'] += 1
 
         bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
+        # feat_vec_list = [client.local_features for client in clients]
+        # pvec_list = [client.pvec for client in clients]
         similarity_mat = torch.zeros((len(bn_params_list), len(bn_params_list)))
         for i, bn_params1 in enumerate(bn_params_list):
             for j, bn_params2 in enumerate(bn_params_list):
                 similarity = cosine_similarity(bn_params1, bn_params2)
                 similarity_mat[i,j] = similarity
-        
+
         similarity_mat = F.softmax(similarity_mat, dim = -1)
+
+        # if t % 10 == 0:
+        #     print(similarity_mat)
+        
         for i in range(len(clients)):
             ww = FedAvg(w_locals, similarity_mat[i])
             clients[i].model_ema.load_state_dict(deepcopy(ww))
 
     acc = 0
     for client in clients:
-        client_acc = np.mean(client.acc_list)
-        print(f'{client.name} accuracy: {client_acc: 0.3f}')
+        client_acc = sum(client.correct_preds) / sum(client.total_preds)
         acc += client_acc
+        print(f'{client.name} accuracy: {client_acc: 0.3f}')
+
     print(f'Global accuracy: {acc/len(clients) : 0.3f}')
     logger.info(f'Global accuracy: {acc/len(clients) : 0.3f}')
-            
+
 
 if __name__ == '__main__':
     load_cfg_fom_args("CIFAR-10C Evaluation")

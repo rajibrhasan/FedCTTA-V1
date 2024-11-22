@@ -5,13 +5,14 @@ import torch
 from torch import nn, optim
 import torch.nn.functional as F
 from sklearn.decomposition import PCA
-from fed_utils import softmax_entropy, ema_update_model
+from fed_utils import ema_update_model
+from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy
 
 class Client(object):
     def __init__(self, name, model, cfg, device):
         self.cfg = cfg
         self.name = name 
-        self.model = model
+        self.model = deepcopy(model)
         
         self.configure_model()
         self.params, param_names = self.collect_params()
@@ -21,25 +22,33 @@ class Client(object):
         for param in self.model_ema.parameters():
             param.detach_()
 
-        self.acc_list = []
+        self.correct_preds = []
+        self.total_preds = []
+        self.domain_list = []
         self.device = device
-        self.p_vecs = []
-        self.x = None
-        self.y = None
+        self.pvec = None
+        self.local_features = None
 
-    def calculate_acc(self, outputs):
+
+    def count_correct_predictions(self, outputs):
         _, predicted = torch.max(outputs, 1)
-        total = self.y.size(0)
         correct = (predicted == self.y.to(self.device)).sum().item()
-        self.acc_list.append(correct / total)
+        self.total_preds.append(self.y.size(0))
+        self.correct_preds.append(correct)
 
-    def adapt(self):
-        self.update_p_vecs()
+    def adapt(self, x, y):
+        self.x = x
+        self.y = y
+        self.update_pvec()
         self.model.to(self.device)
         self.model_ema.to(self.device)
-        outputs = self.model(self.x.to(self.device))
-        outputs_ema = self.model_ema(self.x.to(self.device))
-        loss = softmax_entropy(outputs, outputs_ema).mean(0)
+
+        feats, outputs = self.model(self.x.to(self.device))
+        feats_ema, outputs_ema = self.model_ema(self.x.to(self.device))
+
+        # self.local_features = feats.mean(0).detach().cpu()
+
+        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()
@@ -55,26 +64,23 @@ class Client(object):
         self.model.to('cpu')
         self.model_ema.to('cpu')
 
-        self.calculate_acc(outputs_ema+outputs)
+        self.count_correct_predictions(outputs_ema)
     
-    def update_p_vecs(self):
+    def update_pvec(self):
         pca = PCA(n_components=1)  
         pca.fit(self.x.reshape(self.x.shape[0], -1))
-        self.p_vecs.append(pca.components_[0])
+        self.pvec = pca.components_[0]
 
     def update_acc(self, model = None):
         if model is not None:
             model.to(self.device)
             outputs = model(self.x.to(self.device))
         else:
-            self.model.to(self.device)
-            outputs = self.model(self.x.to(self.device))
-       
-        _, predicted = torch.max(outputs, 1)
-        total = self.y.size(0)
-        correct = (predicted == self.y.to(self.device)).sum().item()
-        self.acc_list.append(correct / total)
-        self.model.to('cpu')
+            self.model_ema.to(self.device)
+            outputs = self.model_ema(self.x.to(self.device))
+
+        self.count_correct_predictions(outputs)
+        self.model_ema.to('cpu')
 
     def setup_optimizer(self):
         """Set up optimizer for tent adaptation.
@@ -99,7 +105,7 @@ class Client(object):
     def configure_model(self):
         """Configure model."""
         # self.model.train()
-        self.model.eval()  # eval mode to avoid stochastic depth in swin. test-time normalization is still applied
+        self.model.train()  # eval mode to avoid stochastic depth in swin. test-time normalization is still applied
         # disable grad, to (re-)enable only what we update
         self.model.requires_grad_(False)
         # enable all trainable

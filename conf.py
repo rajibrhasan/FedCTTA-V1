@@ -45,7 +45,7 @@ _C.OPTIM = CfgNode()
 _C.OPTIM.STEPS = 1
 
 # Learning rate
-_C.OPTIM.LR = 1e-3
+_C.OPTIM.LR = 1e-2
 
 # Choices: Adam, SGD
 _C.OPTIM.METHOD = 'Adam'
@@ -66,7 +66,7 @@ _C.OPTIM.NESTEROV = True
 _C.OPTIM.WD = 0.0
 
 # COTTA
-_C.OPTIM.MT = 0.999
+_C.OPTIM.MT = 0.99
 _C.OPTIM.RST = 0.01
 _C.OPTIM.AP = 0.92
 
@@ -97,7 +97,7 @@ _C.MISC.SAVE_DIR = "./output"
 _C.MISC.DATA_DIR  =  "./data"
 _C.MISC.CKPT_DIR  = "./ckpt"
 _C.MISC.LOG_DEST = 'log.txt'
-_C.MISC.MOMENTUM_SRC = 0.999
+_C.MISC.MOMENTUM_SRC = 0.99
 _C.MISC.IID = True
 
 _C.CUDNN = CfgNode()

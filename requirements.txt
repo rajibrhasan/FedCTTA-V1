@@ -13,3 +13,4 @@ gdown==5.1.0
 pyyaml
 yacs==0.1.8
 wandb
+iopath==0.1.10

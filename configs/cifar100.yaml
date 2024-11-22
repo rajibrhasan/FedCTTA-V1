@@ -28,8 +28,8 @@ BN:
 
 OPTIM:
   STEPS: 1                    # Number of updates per batch
-  LR: 1e-3                    # Learning rate
-  METHOD: "Adam"              # Optimizer type: ['Adam', 'SGD']
+  LR: 1e-4                    # Learning rate
+  METHOD: "SGD"              # Optimizer type: ['Adam', 'SGD']
   BETA: 0.9                   # Beta value for Adam optimizer
   MOMENTUM: 0.9               # Momentum for SGD optimizer
   DAMPENING: 0.0              # Dampening for momentum

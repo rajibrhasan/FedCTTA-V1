@@ -64,7 +64,7 @@ class Client(object):
         self.model.to('cpu')
         self.model_ema.to('cpu')
 
-        self.count_correct_predictions(outputs_ema)
+        # self.count_correct_predictions(outputs_ema)
     
     def update_pvec(self):
         pca = PCA(n_components=1)  
@@ -75,12 +75,13 @@ class Client(object):
         if model is not None:
             model.to(self.device)
             outputs = model(self.x.to(self.device))
+            model.to('cpu')
         else:
             self.model_ema.to(self.device)
             outputs = self.model_ema(self.x.to(self.device))
+            self.model_ema.to('cpu')
 
         self.count_correct_predictions(outputs)
-        self.model_ema.to('cpu')
 
     def setup_optimizer(self):
         """Set up optimizer for tent adaptation.

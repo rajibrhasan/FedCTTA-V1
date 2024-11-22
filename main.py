@@ -69,6 +69,7 @@ def main(severity, device):
         for i in range(len(clients)):
             ww = FedAvg(w_locals, similarity_mat[i])
             clients[i].model_ema.load_state_dict(deepcopy(ww))
+            clients[i].update_acc()
 
     acc = 0
     for client in clients:

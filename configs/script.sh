@@ -1,0 +1,1 @@
+python main.py --cfg configs/cifar10.yaml --opts MISC.IID True MISC.BATCH_SIZE 10 MODEL.ADAPTATION ours

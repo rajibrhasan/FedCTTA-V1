@@ -43,7 +43,7 @@ class Client(object):
 
         # self.local_features = feats.mean(0).detach().cpu()
 
-        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+        loss = softmax_entropy(outputs).mean(0)
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()
@@ -141,7 +141,7 @@ class Client(object):
 
     def extract_bn_weights_and_biases(self):
         bn_params = {}
-        for name, layer in self.model_ema.named_modules():
+        for name, layer in self.model.named_modules():
             if isinstance(layer, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)):
                 gamma = layer.weight.data.cpu()  # Scale (weight)
                 beta = layer.bias.data.cpu()    # Offset (bias)
@@ -150,10 +150,10 @@ class Client(object):
         return bn_params
 
     def get_state_dict(self):
-        return self.model_ema.state_dict()
+        return self.model.state_dict()
     
     def set_state_dict(self, state_dict):
-        self.model_ema.load_state_dict(state_dict)
+        self.model.load_state_dict(state_dict)
     
     def get_model(self):
         return self.model

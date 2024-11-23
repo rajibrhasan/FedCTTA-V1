@@ -1,21 +1,23 @@
-import numpy as np
 from copy import deepcopy
 
-import torch 
-from torch import nn, optim
-import torch.nn.functional as F
+import torch
 from sklearn.decomposition import PCA
+from torch import nn, optim
+
 from fed_utils import ema_update_model
-from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy
+from losses import symmetric_cross_entropy
+
 
 class Client(object):
+    """A class representing a client in a federated learning system."""
+
     def __init__(self, name, model, cfg, device):
         self.cfg = cfg
-        self.name = name 
+        self.name = name
         self.model = deepcopy(model)
-        
+
         self.configure_model()
-        self.params, param_names = self.collect_params()
+        self.params, _ = self.collect_params()
         self.optimizer = self.setup_optimizer() if len(self.params) > 0 else None
 
         self.model_ema = deepcopy(self.model)
@@ -30,16 +32,25 @@ class Client(object):
         self.pvec = None
         self.local_features = None
 
-
     def adapt(self, x, y):
+        """
+        Adapts the model to new data.
+
+        Args:
+            x (torch.Tensor): The input data.
+            y (torch.Tensor): The target labels.
+
+        Returns:
+            None
+        """
         self.x = x
         self.y = y
         self.update_pvec()
         self.model.to(self.device)
         self.model_ema.to(self.device)
 
-        feats, outputs = self.model(self.x.to(self.device))
-        feats_ema, outputs_ema = self.model_ema(self.x.to(self.device))
+        _, outputs = self.model(self.x.to(self.device))
+        _, outputs_ema = self.model_ema(self.x.to(self.device))
 
         # self.local_features = feats.mean(0).detach().cpu()
 
@@ -53,11 +64,11 @@ class Client(object):
             model_to_merge=self.model,
             momentum=self.cfg.MISC.MOMENTUM_SRC,
             device=self.device,
-            update_all=True
+            update_all=True,
         )
 
-        self.model.to('cpu')
-        self.model_ema.to('cpu')
+        self.model.to("cpu")
+        self.model_ema.to("cpu")
 
         _, predicted = torch.max(outputs_ema, 1)
         correct = (predicted == self.y.to(self.device)).sum().item()
@@ -65,46 +76,65 @@ class Client(object):
         self.total_preds.append(len(self.y))
 
     def update_pvec(self):
-        pca = PCA(n_components=1)  
+        """Updates the principal vector of the instance by performing PCA on the input data."""
+        pca = PCA(n_components=1)
         pca.fit(self.x.reshape(self.x.shape[0], -1))
         self.pvec = pca.components_[0]
 
-    def update_acc(self, model = None):
+    def update_acc(self, model=None):
+        """
+        Updates the accuracy of the model by comparing the predicted outputs with the true labels.
+
+        Args:
+           model (torch.nn.Module, optional): The model to be evaluated.
+           If None, the model_ema will be used.
+
+        Returns:
+            None
+        """
         if model is not None:
             model.to(self.device)
             _, outputs = model(self.x.to(self.device))
-            model.to('cpu')
+            model.to("cpu")
         else:
             self.model_ema.to(self.device)
             _, outputs = self.model_ema(self.x.to(self.device))
-            self.model_ema.to('cpu')
-        
+            self.model_ema.to("cpu")
+
         _, predicted = torch.max(outputs, 1)
         correct = (predicted == self.y.to(self.device)).sum().item()
         self.correct_preds_after_adapt.append(correct)
 
     def setup_optimizer(self):
-        """Set up optimizer for tent adaptation.
-        For best results, try tuning the learning rate and batch size.
-        """
-        if self.cfg.OPTIM.METHOD == 'Adam':
-            return optim.Adam(self.params,
-                        lr=self.cfg.OPTIM.LR,
-                        betas=(self.cfg.OPTIM.BETA, 0.999),
-                        weight_decay=self.cfg.OPTIM.WD)
-        
-        elif self.cfg.OPTIM.METHOD == 'SGD':
-            return optim.SGD(self.params,
-                    lr=self.cfg.OPTIM.LR,
-                    momentum=self.cfg.OPTIM.MOMENTUM,
-                    dampening=self.cfg.OPTIM.DAMPENING,
-                    weight_decay=self.cfg.OPTIM.WD,
-                    nesterov=self.cfg.OPTIM.NESTEROV)
+        """Set up optimizer for tent adaptation."""
+        if self.cfg.OPTIM.METHOD == "Adam":
+            return optim.Adam(
+                self.params,
+                lr=self.cfg.OPTIM.LR,
+                betas=(self.cfg.OPTIM.BETA, 0.999),
+                weight_decay=self.cfg.OPTIM.WD,
+            )
+
+        elif self.cfg.OPTIM.METHOD == "SGD":
+            return optim.SGD(
+                self.params,
+                lr=self.cfg.OPTIM.LR,
+                momentum=self.cfg.OPTIM.MOMENTUM,
+                dampening=self.cfg.OPTIM.DAMPENING,
+                weight_decay=self.cfg.OPTIM.WD,
+                nesterov=self.cfg.OPTIM.NESTEROV,
+            )
         else:
             raise NotImplementedError(f"Unknown optimizer: {self.cfg.optim_method}")
-    
+
     def configure_model(self):
-        """Configure model."""
+        """
+        Configures the model by setting the model to train mode and enabling
+        all trainable parameters.
+
+        Returns:
+            None
+        """
         # self.model.train()
         self.model.train()  # eval mode to avoid stochastic depth in swin. test-time normalization is still applied
         # disable grad, to (re-)enable only what we update
@@ -118,48 +148,73 @@ class Client(object):
                 m.running_mean = None
                 m.running_var = None
             elif isinstance(m, nn.BatchNorm1d):
-                m.train()   # always forcing train mode in bn1d will cause problems for single sample tta
+                m.train()  # always forcing train mode in bn1d will cause problems for single sample tta
                 m.requires_grad_(True)
             elif isinstance(m, (nn.LayerNorm, nn.GroupNorm)):
                 m.requires_grad_(True)
-                
+
     def collect_params(self):
-        """Collect the affine scale + shift parameters from normalization layers.
-        Walk the model's modules and collect all normalization parameters.
-        Return the parameters and their names.
-        Note: other choices of parameterization are possible!
+        """
+        Collects the affine scale + shift parameters from normalization layers.
+
+        Returns:
+            list: A list containing the parameters of the normalization layers.
+            list: A list containing the names of the normalization layers.
         """
         params = []
         names = []
         for nm, m in self.model.named_modules():
-            if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)):
+            if isinstance(
+                m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)
+            ):
                 for np, p in m.named_parameters():
-                    if np in ['weight', 'bias'] and p.requires_grad:
+                    if np in ["weight", "bias"] and p.requires_grad:
                         params.append(p)
                         names.append(f"{nm}.{np}")
         return params, names
 
     def extract_bn_weights_and_biases(self):
+        """
+        Extracts the weights and biases of all normalization layers in the model.
+
+        Returns:
+            dict: A dictionary containing the weights and biases of all
+            normalization layers in the model.
+        """
         bn_params = {}
         for name, layer in self.model_ema.named_modules():
-            if isinstance(layer, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)):
+            if isinstance(
+                layer, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)
+            ):
                 gamma = layer.weight.data.cpu()  # Scale (weight)
-                beta = layer.bias.data.cpu()    # Offset (bias)
-                weights = torch.cat((gamma, beta), dim =0)
+                beta = layer.bias.data.cpu()  # Offset (bias)
+                weights = torch.cat((gamma, beta), dim=0)
                 bn_params[name] = weights
         return bn_params
 
     def get_state_dict(self):
-        return self.model.state_dict()
-    
-    def set_state_dict(self, state_dict):
-        self.model.load_state_dict(state_dict)
-    
-    def get_model(self):
-        return self.model
-    
-   
+        """
+        Retrieves the state dictionary of the model.
 
- 
-   
-   
+        Returns:
+            dict: A dictionary containing the state of the model.
+        """
+        return self.model.state_dict()
+
+    def set_state_dict(self, state_dict):
+        """
+        Load the given state dictionary into the model.
+
+        Args:
+            state_dict (dict): A dictionary containing the model's state.
+        """
+        self.model.load_state_dict(state_dict)
+
+    def get_model(self):
+        """
+        Retrieves the current model.
+
+        Returns:
+            The model instance.
+        """
+        return self.model

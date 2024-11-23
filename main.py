@@ -34,8 +34,7 @@ def main(severity, device):
     if cfg.MISC.IID:
         client_schedule = create_schedule_iid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.MISC.TEMPORAL_H)
     else:
-        num_domain_per_timestep = int(cfg.MISC.NUM_CLIENTS * cfg.MISC.SPATIAL_H)
-        client_schedule = create_schedule_niid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, num_domain_per_timestep)
+        client_schedule = create_schedule_niid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.MISC.TEMPORAL_H, cfg.MISC.SPATIAL_H)
     
     logger.info('Client schedule: \n')
     logger.info(client_schedule)
@@ -52,6 +51,7 @@ def main(severity, device):
             client.adapt(x, y)
             w_locals.append(deepcopy(client.model_ema.state_dict()))
             selected_domain['use_count'] += 1
+        
 
         bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
         # feat_vec_list = [client.local_features for client in clients]
@@ -74,13 +74,21 @@ def main(severity, device):
 
     acc = 0
     for client in clients:
-        client_acc = sum(client.correct_preds) / sum(client.total_preds)
+        client_acc = sum(client.correct_preds_before_adapt) / sum(client.total_preds)
         acc += client_acc
         print(f'{client.name} accuracy: {client_acc: 0.3f}')
 
-    print(f'Global accuracy: {acc/len(clients) : 0.3f}')
-    logger.info(f'Global accuracy: {acc/len(clients) : 0.3f}')
+    print(f'Global accuracy before adapt: {acc/len(clients) : 0.3f}')
+    logger.info(f'Global accuracy before adapt: {acc/len(clients) : 0.3f}')
 
+    acc = 0
+    for client in clients:
+        client_acc = sum(client.correct_preds_after_adapt) / sum(client.total_preds)
+        acc += client_acc
+        print(f'{client.name} accuracy: {client_acc: 0.3f}')
+
+    print(f'Global accuracy after adapt: {acc/len(clients) : 0.3f}')
+    logger.info(f'Global accuracy after adapt: {acc/len(clients) : 0.3f}')
 
 if __name__ == '__main__':
     load_cfg_fom_args("CIFAR-10C Evaluation")

@@ -22,19 +22,14 @@ class Client(object):
         for param in self.model_ema.parameters():
             param.detach_()
 
-        self.correct_preds = []
+        self.correct_preds_before_adapt = []
+        self.correct_preds_after_adapt = []
         self.total_preds = []
         self.domain_list = []
         self.device = device
         self.pvec = None
         self.local_features = None
 
-
-    def count_correct_predictions(self, outputs):
-        _, predicted = torch.max(outputs, 1)
-        correct = (predicted == self.y.to(self.device)).sum().item()
-        self.total_preds.append(self.y.size(0))
-        self.correct_preds.append(correct)
 
     def adapt(self, x, y):
         self.x = x
@@ -64,8 +59,11 @@ class Client(object):
         self.model.to('cpu')
         self.model_ema.to('cpu')
 
-        # self.count_correct_predictions(outputs_ema)
-    
+        _, predicted = torch.max(outputs_ema, 1)
+        correct = (predicted == self.y.to(self.device)).sum().item()
+        self.correct_preds_before.append(correct)
+        self.total_preds.append(len(self.y))
+
     def update_pvec(self):
         pca = PCA(n_components=1)  
         pca.fit(self.x.reshape(self.x.shape[0], -1))
@@ -80,8 +78,10 @@ class Client(object):
             self.model_ema.to(self.device)
             _, outputs = self.model_ema(self.x.to(self.device))
             self.model_ema.to('cpu')
-
-        self.count_correct_predictions(outputs)
+        
+        _, predicted = torch.max(outputs, 1)
+        correct = (predicted == self.y.to(self.device)).sum().item()
+        self.correct_preds_after.append(correct)
 
     def setup_optimizer(self):
         """Set up optimizer for tent adaptation.

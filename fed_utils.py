@@ -64,10 +64,8 @@ def assign_clients(num_clients, domains):
     distributed_clients = {domains[i]: clients[i::num_domains] for i in range(num_domains)}
     return distributed_clients
 
-def get_available_domains(selection_count, domains_per_timestep, max_use_count):
-    # Prioritize domains that haven't reached their maximum selection count
-    available_domains = [domain for domain, count in selection_count.items() if count < domains_per_timestep]
-    # If not enough domains are available, add some that have been selected the least
+def get_available_domains(selection_count, domains_per_timestep, max_selection_count):
+    available_domains = [domain for domain, count in selection_count.items() if count < max_selection_count//2]
     if len(available_domains) < domains_per_timestep:
         sorted_domains = sorted(selection_count.items(), key=lambda item: item[1])  # Sort by selection count
         additional_domains = [domain for domain, count in sorted_domains if domain not in available_domains]
@@ -75,24 +73,26 @@ def get_available_domains(selection_count, domains_per_timestep, max_use_count):
 
     return available_domains
 
-def create_schedule_niid(num_clients, timesteps, domains, domains_per_timestep):
+def create_schedule_niid(num_clients, timesteps, domains, temporal_h, spatial_h):
+    domain_per_step = int(spatial_h * num_clients)
+    time_interval = int(1/temporal_h)
+    assert time_interval > 0 and time_interval <= timesteps
     schedule = []
     selection_count = {domain: 0 for domain in domains}
-    max_use_count = timesteps*domains_per_timestep//len(domains)
+    max_selection_count = timesteps*domain_per_step//(len(domains))
 
     # Create the schedule and client assignments
     for t in range(timesteps):
-        available_domains = get_available_domains(selection_count, domains_per_timestep, max_use_count)
-        selected_domains = random.sample(available_domains, domains_per_timestep)
-
-        # Update selection count
-        for domain in selected_domains:
-            selection_count[domain] += 1
-        # Add to schedule
-        schedule.append(selected_domains)
+        if t % time_interval == 0:
+            available_domains = get_available_domains(selection_count, domain_per_step, max_selection_count)
+            selected_domains = random.sample(available_domains, domain_per_step)
+            # Update selection count
+            for domain in selected_domains:
+                selection_count[domain] += int(num_clients * time_interval/domain_per_step)
+            # Add to schedule
+            schedule.append(selected_domains)
 
     random.shuffle(schedule)
-
     print(selection_count)
 
     clients_schedule = [[] for i in range(num_clients)]
@@ -100,34 +100,25 @@ def create_schedule_niid(num_clients, timesteps, domains, domains_per_timestep):
         distributed_clients = assign_clients(num_clients, selected_domains)
         for domain, assigned_clients in distributed_clients.items():
             for client in assigned_clients:
-                clients_schedule[client].append(domain)
+                clients_schedule[client].extend([domain]*time_interval)
     return clients_schedule
 
 def create_schedule_iid(num_clients, timesteps, domains, temporal_h):
-    domain_persistance = int(temporal_h*timesteps)
-    max_use_count = timesteps//len(domains)
+    time_interval = int(1/temporal_h)
+    max_count = timesteps//len(domains)
     use_count = {domain: 0 for domain in domains}
     schedule = []
     last_selection = None
-    cur_idx = 0
-
-    while cur_idx + domain_persistance < timesteps:
-        available_domains = [domain for domain, count in use_count.items() if last_selection != domain and  count + domain_persistance <= max_use_count]
-        if len(available_domains) == 0:
-            break
-        sel_domain = random.choice(available_domains)
-        schedule.extend([sel_domain]*domain_persistance)
-        use_count[sel_domain] += domain_persistance
     
-    random.shuffle(domains)
-    for domain in domains:
-        if use_count[domain] < max_use_count:
-            schedule.extend([domain]*(max_use_count-use_count[domain]))
-            use_count[domain] = max_use_count
+    for t in range(timesteps):
+        if t % time_interval == 0:
+            available_domains = [domain for domain, count in use_count.items() if last_selection != domain and  count < max_count]
+            last_selection = random.choice(available_domains)
+            schedule.extend([last_selection]*min(time_interval, max_count - use_count[last_selection]))
+            use_count[last_selection] += min(time_interval, max_count - use_count[last_selection])
 
     client_schedule = [schedule for i in range(num_clients)]
     return client_schedule
-
 
 
 def cosine_similarity(bn_params1, bn_params2):

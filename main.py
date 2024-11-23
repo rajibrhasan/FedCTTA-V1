@@ -49,7 +49,7 @@ def main(severity, device):
             y = selected_domain['all_y'][cur_idx]
             client.domain_list.append(client_schedule[idx][t])
             client.adapt(x, y)
-            w_locals.append(deepcopy(client.model_ema.state_dict()))
+            w_locals.append(deepcopy(client.model.state_dict()))
             selected_domain['use_count'] += 1
         
 
@@ -69,7 +69,7 @@ def main(severity, device):
         
         for i in range(len(clients)):
             ww = FedAvg(w_locals, similarity_mat[i])
-            clients[i].model_ema.load_state_dict(deepcopy(ww))
+            clients[i].model.load_state_dict(deepcopy(ww))
             clients[i].update_acc()
 
     acc = 0

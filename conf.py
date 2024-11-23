@@ -167,7 +167,7 @@ def load_cfg_fom_args(description="Config options."):
     cfg.merge_from_list(args.opts)
 
     log_dest = os.path.basename(args.cfg_file)
-    log_dest = log_dest.replace('.yaml', '_{}.txt'.format(current_time))
+    log_dest = log_dest.replace('.yaml', '_{}_{}.txt'.format(cfg.MODEL.ADAPTATION, current_time))
 
     g_pathmgr.mkdirs(cfg.MISC.SAVE_DIR)
     cfg.MISC.LOG_TIME, cfg.MISC.LOG_DEST = current_time, log_dest

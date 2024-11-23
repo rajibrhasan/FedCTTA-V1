@@ -54,26 +54,30 @@ def main(severity, device):
             w_locals.append(deepcopy(client.get_state_dict()))
             selected_domain['use_count'] += 1
         
+        if cfg.MODEL.ADAPTATION == 'fedavg':
+            w_avg = FedAvg(w_locals)
+            for client in clients:
+                client.set_state_dict(deepcopy(w_avg))
+        
+        elif cfg.MODEL.ADAPTATION == 'ours':
+            if t % 10 == 0:
+                bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
+                # feat_vec_list = [client.local_features for client in clients]
+                # pvec_list = [client.pvec for client in clients]
+                similarity_mat = torch.zeros((len(bn_params_list), len(bn_params_list)))
+                for i, bn_params1 in enumerate(bn_params_list):
+                    for j, bn_params2 in enumerate(bn_params_list):
+                        similarity = cosine_similarity(bn_params1, bn_params2)
+                        similarity_mat[i,j] = similarity
 
-        if t % 10 == 0:
-            bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
-            # feat_vec_list = [client.local_features for client in clients]
-            # pvec_list = [client.pvec for client in clients]
-            similarity_mat = torch.zeros((len(bn_params_list), len(bn_params_list)))
-            for i, bn_params1 in enumerate(bn_params_list):
-                for j, bn_params2 in enumerate(bn_params_list):
-                    similarity = cosine_similarity(bn_params1, bn_params2)
-                    similarity_mat[i,j] = similarity
+                similarity_mat = F.softmax(similarity_mat, dim = -1)
 
-            similarity_mat = F.softmax(similarity_mat, dim = -1)
-
-            # if t % 10 == 0:
-            #     print(similarity_mat)
-            
-            for i in range(len(clients)):
-                ww = FedAvg(w_locals, similarity_mat[i])
-                clients[i].set_state_dict(deepcopy(ww))
-
+                # if t % 10 == 0:
+                #     print(similarity_mat)
+                
+                for i in range(len(clients)):
+                    ww = FedAvg(w_locals, similarity_mat[i])
+                    clients[i].set_state_dict(deepcopy(ww))
     acc = 0
     for client in clients:
         client_acc = sum(client.correct_preds_before_adapt) / sum(client.total_preds)*100

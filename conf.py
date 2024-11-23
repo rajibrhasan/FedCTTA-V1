@@ -101,6 +101,7 @@ _C.MISC.LOG_DEST = 'log.txt'
 _C.MISC.LOG_TIME = ''
 _C.MISC.MOMENTUM_SRC = 0.99
 _C.MISC.IID = True
+_C.MISC.KAGGLE = False
 
 _C.CUDNN = CfgNode()
 
@@ -171,6 +172,8 @@ def load_cfg_fom_args(description="Config options."):
     g_pathmgr.mkdirs(cfg.MISC.SAVE_DIR)
     cfg.MISC.LOG_TIME, cfg.MISC.LOG_DEST = current_time, log_dest
     cfg.MISC.NUM_STEPS = cfg.CORRUPTION.NUM_EX  * len(cfg.CORRUPTION.TYPE)// (cfg.MISC.BATCH_SIZE * cfg.MISC.NUM_CLIENTS)
+    if cfg.MISC.KAGGLE:
+        cfg.MISC.DATA_DIR = '/kaggle/input/'
     cfg.freeze()
 
     logging.basicConfig(

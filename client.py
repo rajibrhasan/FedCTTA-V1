@@ -43,18 +43,19 @@ class Client(object):
 
         # self.local_features = feats.mean(0).detach().cpu()
 
-        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
-        loss.backward()
-        self.optimizer.step()
-        self.optimizer.zero_grad()
+        if self.cfg.MODEL.ADAPTATION != 'source':
+            loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+            loss.backward()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
-        self.model_ema = ema_update_model(
-            model_to_update=self.model_ema,
-            model_to_merge=self.model,
-            momentum=self.cfg.MISC.MOMENTUM_SRC,
-            device=self.device,
-            update_all=True
-        )
+            self.model_ema = ema_update_model(
+                model_to_update=self.model_ema,
+                model_to_merge=self.model,
+                momentum=self.cfg.MISC.MOMENTUM_SRC,
+                device=self.device,
+                update_all=True
+            )
 
         self.model.to('cpu')
         self.model_ema.to('cpu')

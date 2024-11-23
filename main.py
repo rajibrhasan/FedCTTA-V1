@@ -84,8 +84,8 @@ def main(severity, device):
         acc += client_acc
         print(f'{client.name} accuracy: {client_acc: 0.3f}')
 
-    print(f'Global accuracy before adapt: {acc/len(clients) : 0.3f}')
-    logger.info(f'Global accuracy before adapt: {acc/len(clients) : 0.3f}')
+    print(f'Global accuracy: {acc/len(clients) : 0.3f}')
+    logger.info(f'Global accuracy: {acc/len(clients) : 0.3f}')
 
 
 if __name__ == '__main__':

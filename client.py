@@ -43,7 +43,7 @@ class Client(object):
 
         # self.local_features = feats.mean(0).detach().cpu()
 
-        loss = softmax_entropy(outputs, outputs_ema).mean(0)
+        loss = softmax_entropy_ema(outputs, outputs_ema).mean(0)
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()

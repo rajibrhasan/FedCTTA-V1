@@ -81,7 +81,7 @@ class Client(object):
         
         _, predicted = torch.max(outputs, 1)
         correct = (predicted == self.y.to(self.device)).sum().item()
-        self.correct_preds_after.append(correct)
+        self.correct_preds_after_adapt.append(correct)
 
     def setup_optimizer(self):
         """Set up optimizer for tent adaptation.

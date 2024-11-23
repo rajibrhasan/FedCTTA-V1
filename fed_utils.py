@@ -103,14 +103,32 @@ def create_schedule_niid(num_clients, timesteps, domains, domains_per_timestep):
                 clients_schedule[client].append(domain)
     return clients_schedule
 
-def create_schedule_iid(num_clients, timesteps, domains):
-    schedule = domains*(timesteps//len(domains))
-    random.shuffle(schedule)
-    client_schedule = [[] for i in range(num_clients)]
-    for selected_domain in schedule:
-        for i in range (num_clients):
-            client_schedule[i].append(selected_domain)
+def create_schedule_iid(num_clients, timesteps, domains, temporal_h):
+    domain_persistance = int(temporal_h*timesteps)
+    max_use_count = timesteps//len(domains)
+    use_count = {domain: 0 for domain in domains}
+    schedule = []
+    last_selection = None
+    cur_idx = 0
+
+    while cur_idx + domain_persistance < timesteps:
+        available_domains = [domain for domain, count in use_count.items() if last_selection != domain and  count + domain_persistance <= max_use_count]
+        if len(available_domains) == 0:
+            break
+        sel_domain = random.choice(available_domains)
+        schedule.extend([sel_domain]*domain_persistance)
+        use_count[sel_domain] += domain_persistance
+    
+    random.shuffle(domains)
+    for domain in domains:
+        if use_count[domain] < max_use_count:
+            schedule.extend([domain]*(max_use_count-use_count[domain]))
+            use_count[domain] = max_use_count
+
+    client_schedule = [schedule for i in range(num_clients)]
     return client_schedule
+
+
 
 def cosine_similarity(bn_params1, bn_params2):
     assert bn_params1.keys() == bn_params2.keys(), "Keys must match"

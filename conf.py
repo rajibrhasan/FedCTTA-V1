@@ -90,7 +90,8 @@ _C.MISC = CfgNode()
 _C.MISC.NUM_CLIENTS =  20             # Number of clients
 _C.MISC.BATCH_SIZE = 100              # Batch size for each client
 _C.MISC.NUM_STEPS = 750              # Number of steps for each client
-_C.MISC.SP_HETEROGINITY = 0.2
+_C.MISC.SPATIAL_H = 0.2
+_C.TEMPORAL_H = 0.02
 
 _C.MISC.RNG_SEED = 2
 _C.MISC.SAVE_DIR = "./output"

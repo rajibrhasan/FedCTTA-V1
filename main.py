@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 def main(severity, device):
     print(f"===============================Severity: {severity} || IID : {cfg.MISC.IID}===============================")
     max_use_count = cfg.CORRUPTION.NUM_EX // cfg.MISC.BATCH_SIZE 
-    num_domain_per_timestep = int(cfg.MISC.NUM_CLIENTS * cfg.MISC.SP_HETEROGINITY)
+    
     dataset = get_dataset(cfg, severity, cfg.CORRUPTION.DATASET)
     clients = []
     global_model = load_model(cfg.MODEL.ARCH, cfg.MISC.CKPT_DIR, cfg.CORRUPTION.DATASET, ThreatModel.corruptions)
@@ -32,8 +32,9 @@ def main(severity, device):
         clients.append(Client(f'client_{i}', deepcopy(global_model), cfg, device))
 
     if cfg.MISC.IID:
-        client_schedule = create_schedule_iid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE)
+        client_schedule = create_schedule_iid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.MISC.TEMPORAL_H)
     else:
+        num_domain_per_timestep = int(cfg.MISC.NUM_CLIENTS * cfg.MISC.SPATIAL_H)
         client_schedule = create_schedule_niid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, num_domain_per_timestep)
     
     logger.info('Client schedule: \n')

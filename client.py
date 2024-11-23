@@ -74,11 +74,11 @@ class Client(object):
     def update_acc(self, model = None):
         if model is not None:
             model.to(self.device)
-            outputs = model(self.x.to(self.device))
+            _, outputs = model(self.x.to(self.device))
             model.to('cpu')
         else:
             self.model_ema.to(self.device)
-            outputs = self.model_ema(self.x.to(self.device))
+            _, outputs = self.model_ema(self.x.to(self.device))
             self.model_ema.to('cpu')
 
         self.count_correct_predictions(outputs)

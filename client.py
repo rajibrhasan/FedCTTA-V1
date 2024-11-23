@@ -61,7 +61,7 @@ class Client(object):
 
         _, predicted = torch.max(outputs_ema, 1)
         correct = (predicted == self.y.to(self.device)).sum().item()
-        self.correct_preds_before_adpt.append(correct)
+        self.correct_preds_before_adapt.append(correct)
         self.total_preds.append(len(self.y))
 
     def update_pvec(self):

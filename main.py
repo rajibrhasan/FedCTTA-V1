@@ -32,8 +32,10 @@ def main(severity, device):
         clients.append(Client(f'client_{i}', deepcopy(global_model), cfg, device))
 
     if cfg.MISC.IID:
+        print('IID')
         client_schedule = create_schedule_iid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.MISC.TEMPORAL_H)
     else:
+        print('Non-IID')
         client_schedule = create_schedule_niid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.MISC.TEMPORAL_H, cfg.MISC.SPATIAL_H)
     
     logger.info('Client schedule: \n')
@@ -53,24 +55,24 @@ def main(severity, device):
             selected_domain['use_count'] += 1
         
 
-        bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
-        # feat_vec_list = [client.local_features for client in clients]
-        # pvec_list = [client.pvec for client in clients]
-        similarity_mat = torch.zeros((len(bn_params_list), len(bn_params_list)))
-        for i, bn_params1 in enumerate(bn_params_list):
-            for j, bn_params2 in enumerate(bn_params_list):
-                similarity = cosine_similarity(bn_params1, bn_params2)
-                similarity_mat[i,j] = similarity
+        if t % 10 == 0:
+            bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
+            # feat_vec_list = [client.local_features for client in clients]
+            # pvec_list = [client.pvec for client in clients]
+            similarity_mat = torch.zeros((len(bn_params_list), len(bn_params_list)))
+            for i, bn_params1 in enumerate(bn_params_list):
+                for j, bn_params2 in enumerate(bn_params_list):
+                    similarity = cosine_similarity(bn_params1, bn_params2)
+                    similarity_mat[i,j] = similarity
 
-        similarity_mat = F.softmax(similarity_mat, dim = -1)
+            similarity_mat = F.softmax(similarity_mat, dim = -1)
 
-        # if t % 10 == 0:
-        #     print(similarity_mat)
-        
-        for i in range(len(clients)):
-            ww = FedAvg(w_locals, similarity_mat[i])
-            clients[i].set_state_dict(deepcopy(ww))
-            clients[i].update_acc()
+            # if t % 10 == 0:
+            #     print(similarity_mat)
+            
+            for i in range(len(clients)):
+                ww = FedAvg(w_locals, similarity_mat[i])
+                clients[i].set_state_dict(deepcopy(ww))
 
     acc = 0
     for client in clients:
@@ -81,14 +83,6 @@ def main(severity, device):
     print(f'Global accuracy before adapt: {acc/len(clients) : 0.3f}')
     logger.info(f'Global accuracy before adapt: {acc/len(clients) : 0.3f}')
 
-    acc = 0
-    for client in clients:
-        client_acc = sum(client.correct_preds_after_adapt) / sum(client.total_preds)*100
-        acc += client_acc
-        print(f'{client.name} accuracy: {client_acc: 0.3f}')
-
-    print(f'Global accuracy after adapt: {acc/len(clients) : 0.3f}')
-    logger.info(f'Global accuracy after adapt: {acc/len(clients) : 0.3f}')
 
 if __name__ == '__main__':
     load_cfg_fom_args("CIFAR-10C Evaluation")

@@ -38,8 +38,8 @@ def main(severity, device):
         print('Non-IID')
         client_schedule = create_schedule_niid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.MISC.TEMPORAL_H, cfg.MISC.SPATIAL_H)
     
-    logger.info('Client schedule: \n')
-    logger.info(client_schedule)
+    # logger.info('Client schedule: \n')
+    # logger.info(client_schedule)
     
     for t in tqdm(range(cfg.MISC.NUM_STEPS)):
         w_locals = []

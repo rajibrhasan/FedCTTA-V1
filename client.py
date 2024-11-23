@@ -59,7 +59,7 @@ class Client(object):
         self.model.to('cpu')
         self.model_ema.to('cpu')
 
-        _, predicted = torch.max(outputs_ema, 1)
+        _, predicted = torch.max(outputs, 1)
         correct = (predicted == self.y.to(self.device)).sum().item()
         self.correct_preds_before_adapt.append(correct)
         self.total_preds.append(len(self.y))
@@ -75,9 +75,9 @@ class Client(object):
             _, outputs = model(self.x.to(self.device))
             model.to('cpu')
         else:
-            self.model_ema.to(self.device)
-            _, outputs = self.model_ema(self.x.to(self.device))
-            self.model_ema.to('cpu')
+            self.model.to(self.device)
+            _, outputs = self.model(self.x.to(self.device))
+            self.model.to('cpu')
         
         _, predicted = torch.max(outputs, 1)
         correct = (predicted == self.y.to(self.device)).sum().item()

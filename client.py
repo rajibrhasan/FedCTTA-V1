@@ -54,7 +54,7 @@ class Client(object):
 
         # self.local_features = feats.mean(0).detach().cpu()
 
-        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+        loss = softmax_entropy(outputs).mean(0)
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()
@@ -70,7 +70,7 @@ class Client(object):
         self.model.to("cpu")
         self.model_ema.to("cpu")
 
-        _, predicted = torch.max(outputs_ema, 1)
+        _, predicted = torch.max(outputs, 1)
         correct = (predicted == self.y.to(self.device)).sum().item()
         self.correct_preds_before_adapt.append(correct)
         self.total_preds.append(len(self.y))
@@ -97,10 +97,10 @@ class Client(object):
             _, outputs = model(self.x.to(self.device))
             model.to("cpu")
         else:
-            self.model_ema.to(self.device)
-            _, outputs = self.model_ema(self.x.to(self.device))
-            self.model_ema.to("cpu")
-
+            self.model.to(self.device)
+            _, outputs = self.model(self.x.to(self.device))
+            self.model.to('cpu')
+        
         _, predicted = torch.max(outputs, 1)
         correct = (predicted == self.y.to(self.device)).sum().item()
         self.correct_preds_after_adapt.append(correct)
@@ -182,10 +182,15 @@ class Client(object):
             normalization layers in the model.
         """
         bn_params = {}
+<<<<<<< HEAD
         for name, layer in self.model_ema.named_modules():
             if isinstance(
                 layer, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)
             ):
+=======
+        for name, layer in self.model.named_modules():
+            if isinstance(layer, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)):
+>>>>>>> upstream/main
                 gamma = layer.weight.data.cpu()  # Scale (weight)
                 beta = layer.bias.data.cpu()  # Offset (bias)
                 weights = torch.cat((gamma, beta), dim=0)

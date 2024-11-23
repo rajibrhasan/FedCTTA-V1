@@ -39,8 +39,9 @@ OPTIM:
 MISC:
   NUM_CLIENTS: 20             # Number of clients
   BATCH_SIZE: 10         # Batch size for each client
-  NUM_STEPS: 750          # Number of steps for each client
   IID: True
+  SPATIAL_H: 0.2
+  TEMPORAL_H: 0.02
 
   RNG_SEED : 2
   SAVE_DIR : "./output"

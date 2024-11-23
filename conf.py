@@ -91,13 +91,14 @@ _C.MISC.NUM_CLIENTS =  20             # Number of clients
 _C.MISC.BATCH_SIZE = 100              # Batch size for each client
 _C.MISC.NUM_STEPS = 750              # Number of steps for each client
 _C.MISC.SPATIAL_H = 0.2
-_C.TEMPORAL_H = 0.02
+_C.MISC.TEMPORAL_H = 0.02
 
 _C.MISC.RNG_SEED = 2
 _C.MISC.SAVE_DIR = "./output"
 _C.MISC.DATA_DIR  =  "./data"
 _C.MISC.CKPT_DIR  = "./ckpt"
 _C.MISC.LOG_DEST = 'log.txt'
+_C.MISC.LOG_TIME = ''
 _C.MISC.MOMENTUM_SRC = 0.99
 _C.MISC.IID = True
 
@@ -168,7 +169,7 @@ def load_cfg_fom_args(description="Config options."):
     log_dest = log_dest.replace('.yaml', '_{}.txt'.format(current_time))
 
     g_pathmgr.mkdirs(cfg.MISC.SAVE_DIR)
-    cfg.LOG_TIME, cfg.LOG_DEST = current_time, log_dest
+    cfg.MISC.LOG_TIME, cfg.MISC.LOG_DEST = current_time, log_dest
     cfg.freeze()
 
     logging.basicConfig(

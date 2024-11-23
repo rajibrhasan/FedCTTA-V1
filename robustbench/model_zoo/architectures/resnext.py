@@ -167,4 +167,4 @@ class CifarResNeXt(nn.Module):
         x = self.stage_3(x)
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
-        return x, self.classifier(x)
+        return self.classifier(x)

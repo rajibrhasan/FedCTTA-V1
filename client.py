@@ -38,8 +38,8 @@ class Client(object):
         self.model.to(self.device)
         self.model_ema.to(self.device)
 
-        feats, outputs = self.model(self.x.to(self.device))
-        feats_ema, outputs_ema = self.model_ema(self.x.to(self.device))
+        outputs = self.model(self.x.to(self.device))
+        outputs_ema = self.model_ema(self.x.to(self.device))
 
         # self.local_features = feats.mean(0).detach().cpu()
 

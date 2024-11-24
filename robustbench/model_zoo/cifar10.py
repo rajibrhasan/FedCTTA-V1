@@ -7,7 +7,9 @@ from torch import nn
 from robustbench.model_zoo.architectures.dm_wide_resnet import CIFAR10_MEAN, CIFAR10_STD, \
     DMWideResNet, Swish, DMPreActResNet
 from robustbench.model_zoo.architectures.resnet import Bottleneck, BottleneckChen2020AdversarialNet, \
-    PreActBlock, PreActBlockV2, PreActResNet, ResNet, ResNet8,  ResNet18, BasicBlock
+    PreActBlock, PreActBlockV2, PreActResNet, ResNet,  ResNet18, BasicBlock
+
+from robustbench.model_zoo.architectures.resnet8 import ResNet8
 from robustbench.model_zoo.architectures.resnext import CifarResNeXt, \
     ResNeXtBottleneck
 from robustbench.model_zoo.architectures.resnest import ResNest152

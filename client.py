@@ -15,7 +15,7 @@ class Client(object):
         self.name = name 
         self.model = deepcopy(model)
         
-        self.configure_model()
+        # self.configure_model()
         self.params, param_names = self.collect_params()
         self.optimizer = self.setup_optimizer() if len(self.params) > 0 else None
 

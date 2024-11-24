@@ -59,7 +59,7 @@ class Client(object):
             )
 
             if len(self.domain_list) % 10==0:
-                wandb.log(f"self.name: {self.name} loss: {loss.item()}")
+                wandb.log({f'{self.name}_loss': loss.item()})
 
         self.model.to('cpu')
         self.model_ema.to('cpu')

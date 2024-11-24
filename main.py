@@ -84,9 +84,9 @@ def main(severity, device):
     for client in clients:
         client_acc = sum(client.correct_preds_before_adapt) / sum(client.total_preds)*100
         acc += client_acc
-        wandb.log(f'{client.name} accuracy: {client_acc: 0.3f}')
+        wandb.log({f"{client.name}_accuracy":  client_acc})
 
-    wandb.log(f'Global accuracy: {acc/len(clients) : 0.3f}')
+    wandb.log({'Global accuracy': acc/len(clients)})
     logger.info(f'Global accuracy: {acc/len(clients) : 0.3f}')
 
 

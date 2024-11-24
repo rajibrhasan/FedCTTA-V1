@@ -110,8 +110,8 @@ class Client(object):
     
     def configure_model(self):
         """Configure model."""
-        # self.model.train()
-        self.model.train()  # eval mode to avoid stochastic depth in swin. test-time normalization is still applied
+        self.model.train()
+        # self.model.eval()  # eval mode to avoid stochastic depth in swin. test-time normalization is still applied
         # disable grad, to (re-)enable only what we update
         self.model.requires_grad_(False)
         # enable all trainable

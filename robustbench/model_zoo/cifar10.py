@@ -399,9 +399,6 @@ class Modas2021PRIMEResNet18(ResNet):
         x = (x - self.mu) / self.sigma
         return super().forward(x)
 
-class ResNet8(ResNet):
-    def __init__(self, block, num_blocks, num_classes=10):
-        super().__init__(block, num_blocks, num_classes)
 
 linf = OrderedDict(
     [

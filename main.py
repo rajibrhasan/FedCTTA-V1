@@ -91,6 +91,8 @@ def main(severity, device):
         # acc += client_acc
         # print(f'{client.name} accuracy: {client_acc : 0.3f}')
     
+    print(f'total_correct: {total_correct}')
+    print(f'total_samples: {total_samples}')
     print(f'Global accuracy: {total_correct/total_samples : 0.3f}')
 
     # print(f'Global accuracy: {acc/len(clients) : 0.3f}')

@@ -7,6 +7,7 @@ import torch.nn.functional as F
 from sklearn.decomposition import PCA
 from fed_utils import ema_update_model
 from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy
+import wandb
 
 class Client(object):
     def __init__(self, name, model, cfg, device):
@@ -56,6 +57,9 @@ class Client(object):
                 device=self.device,
                 update_all=True
             )
+
+            if len(self.domain_list) % 10==0:
+                wandb.log(f"self.name: {self.name} loss: {loss.item()}")
 
         self.model.to('cpu')
         self.model_ema.to('cpu')

@@ -17,8 +17,11 @@ from conf import cfg, load_cfg_fom_args
 from tqdm import tqdm
 import numpy as np
 import logging
+import wandb
+import os
 
 logger = logging.getLogger(__name__)
+
 
 def main(severity, device):
     print(f"===============================Severity: {severity} || IID : {cfg.MISC.IID}===============================")
@@ -72,8 +75,7 @@ def main(severity, device):
 
                 similarity_mat = F.softmax(similarity_mat, dim = -1)
 
-                # if t % 10 == 0:
-                #     print(similarity_mat)
+                wandb.log({"similarity_mat": similarity_mat})
                 
                 for i in range(len(clients)):
                     ww = FedAvg(w_locals, similarity_mat[i])
@@ -82,15 +84,32 @@ def main(severity, device):
     for client in clients:
         client_acc = sum(client.correct_preds_before_adapt) / sum(client.total_preds)*100
         acc += client_acc
-        print(f'{client.name} accuracy: {client_acc: 0.3f}')
+        wandb.log(f'{client.name} accuracy: {client_acc: 0.3f}')
 
-    print(f'Global accuracy: {acc/len(clients) : 0.3f}')
+    wandb.log(f'Global accuracy: {acc/len(clients) : 0.3f}')
     logger.info(f'Global accuracy: {acc/len(clients) : 0.3f}')
 
 
 if __name__ == '__main__':
     load_cfg_fom_args("CIFAR-10C Evaluation")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    print(cfg)
+
+    # ==========================================================================
+    desc = f"Arch: {cfg.MODEL.ARCH} || Adaptation: {cfg.MODEL.ADAPTATION} \n Dataset: {cfg.CORRUPTION.DATASET}  || Timesteps: {cfg.MISC.NUM_STEPS} || {cfg.MISC.BATCH_SIZE}\n IID: {cfg.MISC.IID} || Temporal Heterogenity: {cfg.MISC.TEMPORAL_H} || Spatial Heterogenity: {cfg.MISC.SPATIAL_H}\n "
+    wandb_api_key=os.environ.get('WANDB_API_KEY')
+    if wandb_api_key:
+        wandb.login(key=wandb_api_key)
+    else:
+        print("WANDB_API_KEY not found in environment variables.")
+    wandb.init(
+        project="cfg.CORRUPTION.DATASET" + "_iid" if cfg.MISC.IID else "_niid",
+        config = cfg,
+        name = cfg.MODEL.ARCH + cfg.MODEL.ADAPTATION,
+        notes = desc,
+        dir= "output"
+    )
+    # ========================================================================== 
+    
+    
     for severity in cfg.CORRUPTION.SEVERITY:
         main(severity, device)

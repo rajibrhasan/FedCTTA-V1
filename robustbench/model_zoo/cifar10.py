@@ -7,7 +7,7 @@ from torch import nn
 from robustbench.model_zoo.architectures.dm_wide_resnet import CIFAR10_MEAN, CIFAR10_STD, \
     DMWideResNet, Swish, DMPreActResNet
 from robustbench.model_zoo.architectures.resnet import Bottleneck, BottleneckChen2020AdversarialNet, \
-    PreActBlock, PreActBlockV2, PreActResNet, ResNet, ResNet18, BasicBlock
+    PreActBlock, PreActBlockV2, PreActResNet, ResNet, ResNet8,  ResNet18, BasicBlock
 from robustbench.model_zoo.architectures.resnext import CifarResNeXt, \
     ResNeXtBottleneck
 from robustbench.model_zoo.architectures.resnest import ResNest152
@@ -399,6 +399,9 @@ class Modas2021PRIMEResNet18(ResNet):
         x = (x - self.mu) / self.sigma
         return super().forward(x)
 
+class ResNet8(ResNet):
+    def __init__(self, block, num_blocks, num_classes=10):
+        super().__init__(block, num_blocks, num_classes)
 
 linf = OrderedDict(
     [
@@ -1176,7 +1179,15 @@ common_corruptions = OrderedDict([
     ('Addepalli2022Efficient_WRN_34_10', {
         'model': lambda: WideResNet(depth=34, widen_factor=10),
         'gdrive_id': '1--dVDtZhAk4D2zMtTDwIGnImuCGxTcBA',
-    })
+    }),
+
+    ('ResNet8', {
+        'model': lambda: ResNet8(),
+        'gdrive_id': '1Xy6kVJ8d27RpfE2t8sPBuczHtrS-ZWwP',
+    }
+
+    )
+
 ])
 
 cifar_10_models = OrderedDict([(ThreatModel.Linf, linf), (ThreatModel.L2, l2),

@@ -234,8 +234,8 @@ class PreActResNet(nn.Module):
         out = self.linear(out)
         return out
 
-def resnet8(**kwargs: Any) -> ResNet:  # 8 = 2 + 2 * (1 + 1 + 1)
-    return ResNet(BasicBlock, [1, 1, 1], **kwargs)
+def ResNet8() -> ResNet:  # 8 = 2 + 2 * (1 + 1 + 1)
+    return ResNet(BasicBlock, [1, 1, 1, 0])
 
 def ResNet18():
     return ResNet(BasicBlock, [2, 2, 2, 2])

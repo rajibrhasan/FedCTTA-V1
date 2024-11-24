@@ -1,5 +1,5 @@
 MODEL:
-  ARCH: "Modas2021PRIMEResNet18"            # Model architecture: 'Standard', 'ResNet', etc.
+  ARCH: "ResNet8"            # Model architecture: 'Standard', 'ResNet', etc.
 
 CORRUPTION:
   DATASET: "cifar10"          # Dataset for evaluation: 'cifar10', 'cifar100'

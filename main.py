@@ -81,13 +81,20 @@ def main(severity, device):
                     ww = FedAvg(w_locals, similarity_mat[i])
                     clients[i].set_state_dict(deepcopy(ww))
     acc = 0
-    for client in clients:
-        client_acc = sum(client.correct_preds_before_adapt) / sum(client.total_preds)*100
-        acc += client_acc
-        wandb.log({f"{client.name}_accuracy":  client_acc})
+    total_correct = 0
+    total_samples = 0
 
-    wandb.log({'Global accuracy': acc/len(clients)})
-    logger.info(f'Global accuracy: {acc/len(clients) : 0.3f}')
+    for client in clients:
+        total_correct += sum(client.correct_preds_before_adapt)
+        total_samples += sum(client.total_preds)
+        # client_acc = sum(client.correct_preds_before_adapt) / sum(client.total_preds)*100
+        # acc += client_acc
+        # print(f'{client.name} accuracy: {client_acc : 0.3f}')
+    
+    print(f'Global accuracy: {total_correct/total_samples : 0.3f}')
+
+    # print(f'Global accuracy: {acc/len(clients) : 0.3f}')
+    # logger.info(f'Global accuracy: {acc/len(clients) : 0.3f}')
 
 
 if __name__ == '__main__':
@@ -102,7 +109,7 @@ if __name__ == '__main__':
     else:
         print("WANDB_API_KEY not found in environment variables.")
     wandb.init(
-        project="cfg.CORRUPTION.DATASET" + "_iid" if cfg.MISC.IID else "_niid",
+        project=cfg.CORRUPTION.DATASET + "_iid" if cfg.MISC.IID else "_niid",
         config = cfg,
         name = cfg.MODEL.ARCH + cfg.MODEL.ADAPTATION,
         notes = desc,

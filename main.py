@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def main(severity, device):
-    print(f"===============================Dataset: {cfg.CORRUPTION.DATASET} || Adaptation: {cfg.MODEL.ADAPTATION} || IID : {cfg.MISC.IID}===============================")
+    print(f"===============================Dataset: {cfg.CORRUPTION.DATASET} || Batch Size: {cfg.MISC.BATCH_SIZE} || Adaptation: {cfg.MODEL.ADAPTATION} || IID : {cfg.MISC.IID}===============================")
     max_use_count = cfg.CORRUPTION.NUM_EX // cfg.MISC.BATCH_SIZE 
     
     dataset = get_dataset(cfg, severity, cfg.CORRUPTION.DATASET)
@@ -35,10 +35,8 @@ def main(severity, device):
         clients.append(Client(f'client_{i}', deepcopy(global_model), cfg, device))
 
     if cfg.MISC.IID:
-        print('IID')
         client_schedule = create_schedule_iid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.MISC.TEMPORAL_H)
     else:
-        print('Non-IID')
         client_schedule = create_schedule_niid(cfg.MISC.NUM_CLIENTS, cfg.MISC.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.MISC.TEMPORAL_H, cfg.MISC.SPATIAL_H)
     
     # logger.info('Client schedule: \n')
@@ -78,8 +76,8 @@ def main(severity, device):
             exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
             # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
             normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
-            if t  % 10 == 0:
-                print(normalized_similarity)
+            # if t  % 10 == 0:
+            #     print(normalized_similarity)
 
             # wandb.log({"similarity_mat": similarity_mat})
             

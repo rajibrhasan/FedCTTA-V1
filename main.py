@@ -85,8 +85,6 @@ def main(severity, device):
                 ww = FedAvg(w_locals, torch.tensor(normalized_similarity[i]))
                 clients[i].set_state_dict(deepcopy(ww))
 
-        for client in clients:
-            client.update_acc()
     
     acc_st_before = 0
     acc_t_before = 0
@@ -107,24 +105,24 @@ def main(severity, device):
     print(f'Global accuracy(Mixed): {acc_m_before/len(clients) : 0.3f}')
 
 
-    acc_st_after = 0
-    acc_t_after = 0
-    acc_m_after = 0
-    for client in clients:
-        client_acc_st = sum(client.correct_after['student']) / sum(client.total_preds)*100
-        client_acc_t = sum(client.correct_after['teacher']) / sum(client.total_preds)*100
-        client_acc_m =  sum(client.correct_after['mixed']) / sum(client.total_preds)*100
-        acc_st_after += client_acc_st
-        acc_t_after += client_acc_t
-        acc_m_after += client_acc_m
-        print(f'{client.name} Student accuracy: {client_acc_st : 0.3f}')
-        print(f'{client.name} Teacher accuracy: {client_acc_t: 0.3f}')
-        print(f'{client.name} Mixed accuracy: {client_acc_m: 0.3f}')
+    # acc_st_after = 0
+    # acc_t_after = 0
+    # acc_m_after = 0
+    # for client in clients:
+    #     client_acc_st = sum(client.correct_after['student']) / sum(client.total_preds)*100
+    #     client_acc_t = sum(client.correct_after['teacher']) / sum(client.total_preds)*100
+    #     client_acc_m =  sum(client.correct_after['mixed']) / sum(client.total_preds)*100
+    #     acc_st_after += client_acc_st
+    #     acc_t_after += client_acc_t
+    #     acc_m_after += client_acc_m
+    #     print(f'{client.name} Student accuracy: {client_acc_st : 0.3f}')
+    #     print(f'{client.name} Teacher accuracy: {client_acc_t: 0.3f}')
+    #     print(f'{client.name} Mixed accuracy: {client_acc_m: 0.3f}')
 
     
-    print(f'Global accuracy(Student): {acc_st_after/len(clients) : 0.3f}')
-    print(f'Global accuracy(Teacher): {acc_t_after/len(clients) : 0.3f}')
-    print(f'Global accuracy(Mixed): {acc_m_after/len(clients) : 0.3f}')
+    # print(f'Global accuracy(Student): {acc_st_after/len(clients) : 0.3f}')
+    # print(f'Global accuracy(Teacher): {acc_t_after/len(clients) : 0.3f}')
+    # print(f'Global accuracy(Mixed): {acc_m_after/len(clients) : 0.3f}')
 
 
 

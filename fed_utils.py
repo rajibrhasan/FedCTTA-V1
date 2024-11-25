@@ -125,7 +125,8 @@ def cosine_similarity(bn_params1, bn_params2):
     assert bn_params1.keys() == bn_params2.keys(), "Keys must match"
     similarities = []
     for layer_name in bn_params1:
-        similarity = nn.functional.cosine_similarity(bn_params1[layer_name], bn_params2[layer_name], dim = 0)
-        similarities.append(similarity.item())  
-        
+        similarity = nn.functional.cosine_similarity(bn_params1[layer_name].reshape(1, -1), bn_params2[layer_name].reshape(1, -1), dim = 1)
+        similarity = torch.clamp(similarity, min=0, max=1)
+        similarities.append(similarity.item())
+    
     return sum(similarities)/len(similarities)

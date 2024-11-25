@@ -23,9 +23,21 @@ class Client(object):
         for param in self.model_ema.parameters():
             param.detach_()
 
-        self.correct_preds_before_adapt = []
-        self.correct_preds_after_adapt = []
         self.total_preds = []
+        self.correct_before = {
+            'student': [],
+            'teacher': [], 
+            'mixed': []
+
+        }
+
+        self.correct_after = {
+            'student': [],
+            'teacher': [], 
+            'mixed': []
+
+        }
+
         self.domain_list = []
         self.device = device
         self.pvec = None
@@ -35,7 +47,7 @@ class Client(object):
     def adapt(self, x, y):
         self.x = x
         self.y = y
-        self.update_pvec()
+        # self.update_pvec()
         self.model.to(self.device)
         self.model_ema.to(self.device)
 
@@ -64,29 +76,51 @@ class Client(object):
         self.model.to('cpu')
         self.model_ema.to('cpu')
 
-        _, predicted = torch.max(outputs_ema, 1)
-        correct = (predicted == self.y.to(self.device)).sum().item()
-        self.correct_preds_before_adapt.append(correct)
+        _, st_pred = torch.max(outputs, 1)
+        correct_st = (st_pred == self.y.to(self.device)).sum().item()
+        self.correct_before['student'].append(correct_st)
+
+        _, t_pred = torch.max(outputs_ema, 1)
+        correct_t = (t_pred == self.y.to(self.device)).sum().item()
+        self.correct_before['teacher'].append(correct_t)
+
+        _, m_pred = torch.max(outputs_ema+outputs, 1)
+        correct_m = (m_pred == self.y.to(self.device)).sum().item()
+        self.correct_before['mixed'].append(correct_m)
+
         self.total_preds.append(len(self.y))
+
+        self.x = x
+        self.y = y
 
     def update_pvec(self):
         pca = PCA(n_components=1)  
         pca.fit(self.x.reshape(self.x.shape[0], -1))
         self.pvec = pca.components_[0]
 
-    def update_acc(self, model = None):
-        if model is not None:
-            model.to(self.device)
-            _, outputs = model(self.x.to(self.device))
-            model.to('cpu')
-        else:
-            self.model.to(self.device)
-            _, outputs = self.model_ema(self.x.to(self.device))
-            self.model_ema.to('cpu')
-        
-        _, predicted = torch.max(outputs, 1)
-        correct = (predicted == self.y.to(self.device)).sum().item()
-        self.correct_preds_after_adapt.append(correct)
+    def update_acc(self):
+        self.model.to(self.device)
+        self.model_ema.to(self.device)
+        with torch.no_grad():
+            outputs = self.model(self.x.to(self.device))
+            outputs_ema = self.model_ema(self.x.to(self.device))
+    
+            _, st_pred = torch.max(outputs, 1)
+            correct_st = (st_pred == self.y.to(self.device)).sum().item()
+            self.correct_after['student'].append(correct_st)
+
+            _, t_pred = torch.max(outputs_ema, 1)
+            correct_t = (t_pred == self.y.to(self.device)).sum().item()
+            self.correct_after['teacher'].append(correct_t)
+            self.total_preds.append(len(self.y))
+
+            _, m_pred = torch.max(outputs_ema+outputs, 1)
+            correct_m = (m_pred == self.y.to(self.device)).sum().item()
+            self.correct_after['mixed'].append(correct_m)
+
+        self.model.to('cpu')
+        self.model_ema.to('cpu')
+    
 
     def setup_optimizer(self):
         """Set up optimizer for tent adaptation.
@@ -145,19 +179,23 @@ class Client(object):
 
     def extract_bn_weights_and_biases(self):
         bn_params = {}
-        for name, layer in self.model_ema.named_modules():
-            if isinstance(layer, (nn.BatchNorm1d, nn.BatchNorm2d, nn.Conv2d)):
-                gamma = layer.weight.data.cpu()  # Scale (weight)
-                beta = layer.bias.data.cpu()    # Offset (bias)
-                weights = torch.cat((gamma, beta), dim =0)
-                bn_params[name] = weights
-        return bn_params
+        for name, layer in self.model.named_modules():
+            for np, p in layer.named_parameters():
+                if np in ['weight', 'bias'] and p.requires_grad:
+                    bn_params[f"{name}.{np}"] = p.data.cpu()
+                    # params.append(p)
+                    # names.append(f"{nm}.{np}")
+                # gamma = layer.weight.data.cpu()  # Scale (weight)
+                # beta = layer.bias.data.cpu()    # Offset (bias)
+                # weights = torch.cat((gamma, beta), dim =0)
+                # bn_params[name] = weights
+        return deepcopy(bn_params)
 
     def get_state_dict(self):
-        return self.model_ema.state_dict()
+        return self.model.state_dict()
     
     def set_state_dict(self, state_dict):
-        self.model_ema.load_state_dict(state_dict)
+        self.model.load_state_dict(state_dict)
     
     def get_model(self):
         return self.model

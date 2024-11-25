@@ -92,6 +92,7 @@ _C.MISC.BATCH_SIZE = 100              # Batch size for each client
 _C.MISC.NUM_STEPS = 750              # Number of steps for each client
 _C.MISC.SPATIAL_H = 0.2
 _C.MISC.TEMPORAL_H = 0.02
+_C.MISC.TEMP = 0.01
 
 _C.MISC.RNG_SEED = 2
 _C.MISC.SAVE_DIR = "./output"

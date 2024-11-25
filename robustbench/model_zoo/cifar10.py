@@ -1184,9 +1184,7 @@ common_corruptions = OrderedDict([
         'model': lambda: ResNet8(),
         'gdrive_id': '1Xy6kVJ8d27RpfE2t8sPBuczHtrS-ZWwP',
     }
-
     )
-
 ])
 
 cifar_10_models = OrderedDict([(ThreatModel.Linf, linf), (ThreatModel.L2, l2),

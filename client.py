@@ -159,8 +159,9 @@ class Client(object):
             elif isinstance(m, nn.BatchNorm1d):
                 m.train()   # always forcing train mode in bn1d will cause problems for single sample tta
                 m.requires_grad_(True)
-            # else:
-            #     m.requires_grad_(True)
+            else:
+                if self.cfg.MISC.ADAPT_ALL:
+                    m.requires_grad_(True)
                 
     def collect_params(self):
         """Collect all trainable parameters.

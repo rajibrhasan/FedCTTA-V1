@@ -61,29 +61,30 @@ def main(severity, device):
                 client.set_state_dict(deepcopy(w_avg))
         
         elif cfg.MODEL.ADAPTATION == 'ours':
-            with torch.no_grad():
-                bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
-                # feat_vec_list = [client.local_features for client in clients]
-                # pvec_list = [client.pvec for client in clients]
-                similarity_mat = torch.zeros((len(bn_params_list), len(bn_params_list)))
-                for i, bn_params1 in enumerate(bn_params_list):
-                    for j, bn_params2 in enumerate(bn_params_list):
-                        similarity = cosine_similarity(bn_params1, bn_params2)
-                        similarity_mat[i,j] = similarity
+            if t % cfg.MISC.AGG_FREQ == 0:
+                with torch.no_grad():
+                    bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
+                    # feat_vec_list = [client.local_features for client in clients]
+                    # pvec_list = [client.pvec for client in clients]
+                    similarity_mat = torch.zeros((len(bn_params_list), len(bn_params_list)))
+                    for i, bn_params1 in enumerate(bn_params_list):
+                        for j, bn_params2 in enumerate(bn_params_list):
+                            similarity = cosine_similarity(bn_params1, bn_params2)
+                            similarity_mat[i,j] = similarity
 
-            scaled_similarity = np.array(similarity_mat / cfg.MISC.TEMP)
-            # Apply softmax to normalize the similarity values for aggregation
-            exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
-            # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
-            normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
-            # if t  % 10 == 0:
-            #     print(normalized_similarity)
+                scaled_similarity = np.array(similarity_mat / cfg.MISC.TEMP)
+                # Apply softmax to normalize the similarity values for aggregation
+                exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
+                # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
+                normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
+                # if t  % 10 == 0:
+                #     print(normalized_similarity)
 
-            # wandb.log({"similarity_mat": similarity_mat})
-            
-            for i in range(len(clients)):
-                ww = FedAvg(w_locals, torch.tensor(normalized_similarity[i]))
-                clients[i].set_state_dict(deepcopy(ww))
+                # wandb.log({"similarity_mat": similarity_mat})
+                
+                for i in range(len(clients)):
+                    ww = FedAvg(w_locals, torch.tensor(normalized_similarity[i]))
+                    clients[i].set_state_dict(deepcopy(ww))
 
     
     acc_st_before = 0

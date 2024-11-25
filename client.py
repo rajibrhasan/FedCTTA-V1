@@ -109,7 +109,7 @@ class Client(object):
             raise NotImplementedError(f"Unknown optimizer: {self.cfg.optim_method}")
     
     def configure_model(self):
-        """Configure model."""
+        """Configure model"""
         self.model.train()
         # self.model.eval()  # eval mode to avoid stochastic depth in swin. test-time normalization is still applied
         # disable grad, to (re-)enable only what we update
@@ -125,29 +125,28 @@ class Client(object):
             elif isinstance(m, nn.BatchNorm1d):
                 m.train()   # always forcing train mode in bn1d will cause problems for single sample tta
                 m.requires_grad_(True)
-            elif isinstance(m, (nn.LayerNorm, nn.GroupNorm)):
+            else:
                 m.requires_grad_(True)
                 
     def collect_params(self):
-        """Collect the affine scale + shift parameters from normalization layers.
-        Walk the model's modules and collect all normalization parameters.
+        """Collect all trainable parameters.
+        Walk the model's modules and collect all parameters.
         Return the parameters and their names.
         Note: other choices of parameterization are possible!
         """
         params = []
         names = []
         for nm, m in self.model.named_modules():
-            if isinstance(m, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)):
-                for np, p in m.named_parameters():
-                    if np in ['weight', 'bias'] and p.requires_grad:
-                        params.append(p)
-                        names.append(f"{nm}.{np}")
+            for np, p in m.named_parameters():
+                if np in ['weight', 'bias'] and p.requires_grad:
+                    params.append(p)
+                    names.append(f"{nm}.{np}")
         return params, names
 
     def extract_bn_weights_and_biases(self):
         bn_params = {}
         for name, layer in self.model_ema.named_modules():
-            if isinstance(layer, (nn.BatchNorm1d, nn.BatchNorm2d, nn.LayerNorm, nn.GroupNorm)):
+            if isinstance(layer, (nn.BatchNorm1d, nn.BatchNorm2d, nn.Conv2d)):
                 gamma = layer.weight.data.cpu()  # Scale (weight)
                 beta = layer.bias.data.cpu()    # Offset (bias)
                 weights = torch.cat((gamma, beta), dim =0)
@@ -162,9 +161,3 @@ class Client(object):
     
     def get_model(self):
         return self.model
-    
-   
-
- 
-   
-   

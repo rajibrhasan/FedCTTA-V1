@@ -188,7 +188,7 @@ def load_cfg_fom_args(description="Config options."):
 
     g_pathmgr.mkdirs(os.path.join(cfg.MISC.SAVE_DIR, iid_text))
     cfg.MISC.LOG_TIME, cfg.MISC.LOG_DEST = current_time, log_dest
-    cfg.MISC.NUM_STEPS = cfg.CORRUPTION.NUM_EX  * len(cfg.CORRUPTION.TYPE)// (cfg.MISC.BATCH_SIZE * cfg.MISC.NUM_CLIENTS)
+    cfg.MISC.NUM_STEPS = cfg.CORRUPTION.NUM_EX  * len(cfg.CORRUPTION.TYPE)// (cfg.FED.BATCH_SIZE * cfg.FED.NUM_CLIENTS)
     
     cfg.freeze()
 

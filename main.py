@@ -138,10 +138,11 @@ if __name__ == '__main__':
         print("WANDB_API_KEY not found in environment variables.")
     
     iid_text = "iid" if cfg.FED.IID else "niid"
+    bn_text = "bn" if cfg.MISC.ADAPT_ALL else "fm"
     wandb.init(
         project = f"{cfg.CORRUPTION.DATASET}_{cfg.MODEL.ADAPTATION}_{iid_text}_{cfg.MISC.SIMILARITY}",
         config = cfg,
-        name = f"{cfg.MODEL.ADAPTATION} || ADAPT_ALL : {cfg.MISC.ADAPT_ALL}",
+        name = f"{cfg.MODEL.ADAPTATION}_{bn_text}",
         notes = desc,
         dir= "output"
     )

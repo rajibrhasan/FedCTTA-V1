@@ -52,7 +52,7 @@ def get_dataset(cfg, severity, dataset_name):
             x_test, y_test = load_cifar100c(cfg.CORRUPTION.NUM_EX, severity, cfg.MISC.DATA_DIR, True, [corruption_type])            
         dataset[corruption_type]['all_x'] = x_test
         dataset[corruption_type]['all_y'] = y_test
-        dataset[corruption_type]['indices'] = split_indices_into_batches(len(x_test), cfg.MISC.BATCH_SIZE)
+        dataset[corruption_type]['indices'] = split_indices_into_batches(len(x_test), cfg.FED.BATCH_SIZE)
         dataset[corruption_type]['use_count'] = 0
         
     return dataset

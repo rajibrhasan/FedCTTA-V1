@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def main(severity, device):
-    print(f"===============================Dataset: {cfg.CORRUPTION.DATASET} || Batch Size: {cfg.FED.BATCH_SIZE} || Adaptation: {cfg.MODEL.ADAPTATION} || IID : {cfg.FED.IID}===============================")
+    print(f"===============================Dataset: {cfg.CORRUPTION.DATASET} || Batch Size: {cfg.FED.BATCH_SIZE} || Adaptation: {cfg.MODEL.ADAPTATION} || IID : {cfg.FED.IID} || ADAPT : {cfg.MISC.ADAPT_ALL} || Similarity : {cfg.MISC.SIMILARITY}===============================")
     max_use_count = cfg.CORRUPTION.NUM_EX // cfg.FED.BATCH_SIZE 
     
     dataset = get_dataset(cfg, severity, cfg.CORRUPTION.DATASET)

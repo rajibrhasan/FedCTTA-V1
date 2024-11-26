@@ -1,1 +1,1 @@
-python main.py --cfg configs/cifar10.yaml --opts MISC.IID True MODEL.ADAPTATION ours MISC.BATCH_SIZE 10 MISC.TEMPORAL_H 0.02 MISC.SPATIAL_H 0.2
+python main.py --cfg configs/cifar10.yaml --opts FED.IID True MISC.SIMILARITY ema_probs MODEL.ADAPTATION ours FED.BATCH_SIZE 10 FED.TEMPORAL_H 0.02 FED.SPATIAL_H 0.2 MISC.ADAPT_ALL True FED.AGG_FREQ 10

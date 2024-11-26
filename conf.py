@@ -184,11 +184,11 @@ def load_cfg_fom_args(description="Config options."):
 
     log_dest = os.path.basename(args.cfg_file)
     log_dest = log_dest.replace('.yaml', '_{}_{}.txt'.format(cfg.MODEL.ADAPTATION, current_time))
-    iid_text = 'IID' if cfg.MISC.IID else 'NIID'
+    iid_text = 'IID' if cfg.FED.IID else 'NIID'
 
     g_pathmgr.mkdirs(os.path.join(cfg.MISC.SAVE_DIR, iid_text))
     cfg.MISC.LOG_TIME, cfg.MISC.LOG_DEST = current_time, log_dest
-    cfg.MISC.NUM_STEPS = cfg.CORRUPTION.NUM_EX  * len(cfg.CORRUPTION.TYPE)// (cfg.FED.BATCH_SIZE * cfg.FED.NUM_CLIENTS)
+    cfg.FED.NUM_STEPS = cfg.CORRUPTION.NUM_EX  * len(cfg.CORRUPTION.TYPE)// (cfg.FED.BATCH_SIZE * cfg.FED.NUM_CLIENTS)
     
     cfg.freeze()
 

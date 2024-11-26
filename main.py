@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def main(severity, device):
     print(f"===============================Dataset: {cfg.CORRUPTION.DATASET} || Batch Size: {cfg.FED.BATCH_SIZE} || Adaptation: {cfg.MODEL.ADAPTATION} || IID : {cfg.FED.IID}===============================")
-    max_use_count = cfg.CORRUPTION.NUM_EX // cfg.MISC.BATCH_SIZE 
+    max_use_count = cfg.CORRUPTION.NUM_EX // cfg.FED.BATCH_SIZE 
     
     dataset = get_dataset(cfg, severity, cfg.CORRUPTION.DATASET)
     clients = []
@@ -86,7 +86,7 @@ def main(severity, device):
                         NotImplementedError(f"Similarity method {cfg.MISC.SIMILARITY} not implemented")
 
                 temperature = cfg.MISC.EMA_PROBS_TEMP if cfg.MISC.SIMILARITY == 'ema_probs' else cfg.MISC.TEMP
-                scaled_similarity = np.array(similarity_mat / 1)
+                scaled_similarity = np.array(similarity_mat / temperature)
                 # Apply softmax to normalize the similarity values for aggregation
                 exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
                 # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
@@ -128,14 +128,14 @@ if __name__ == '__main__':
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
     # ==========================================================================
-    desc = f"Arch: {cfg.MODEL.ARCH} || Adaptation: {cfg.MODEL.ADAPTATION} || Similarity : {cfg.MISC.SIMILARITY}\n Dataset: {cfg.CORRUPTION.DATASET}  || Timesteps: {cfg.MISC.NUM_STEPS} || Batch Size: {cfg.MISC.BATCH_SIZE}\n IID: {cfg.MISC.IID} || Temporal Heterogenity: {cfg.MISC.TEMPORAL_H} || Spatial Heterogenity: {cfg.MISC.SPATIAL_H}\n "
+    desc = f"Arch: {cfg.MODEL.ARCH} || Adaptation: {cfg.MODEL.ADAPTATION} || Similarity : {cfg.MISC.SIMILARITY}\n Dataset: {cfg.CORRUPTION.DATASET}  || Timesteps: {cfg.FED.NUM_STEPS} || Batch Size: {cfg.FED.BATCH_SIZE}\n IID: {cfg.FED.IID} || Temporal Heterogenity: {cfg.FED.TEMPORAL_H} || Spatial Heterogenity: {cfg.FED.SPATIAL_H}\n "
     wandb_api_key=os.environ.get('WANDB_API_KEY')
     if wandb_api_key:
         wandb.login(key=wandb_api_key)
     else:
         print("WANDB_API_KEY not found in environment variables.")
     
-    iid_text = "iid" if cfg.MISC.IID else "niid"
+    iid_text = "iid" if cfg.FED.IID else "niid"
     wandb.init(
         project = f"{cfg.CORRUPTION.DATASET}_{cfg.MODEL.ADAPTATION}_{iid_text}_{cfg.MISC.SIMILARITY}",
         config = cfg,

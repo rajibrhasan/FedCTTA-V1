@@ -37,13 +37,14 @@ OPTIM:
   DAMPENING: 0.0              # Dampening for momentum
   NESTEROV: true              # Use Nesterov momentum for SGD optimizer
   WD: 0.0                     # Weight decay (L2 regularization)
-  
-MISC:
+
+FED:
   NUM_CLIENTS: 20             # Number of clients
   BATCH_SIZE: 10              # Batch size for each client
   SPATIAL_H: 0.2
   TEMPORAL_H: 0.02
 
+MISC:
   RNG_SEED : 1
   SAVE_DIR : "./output"
   DATA_DIR : "./data"

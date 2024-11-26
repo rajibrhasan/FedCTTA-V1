@@ -139,7 +139,7 @@ if __name__ == '__main__':
     else:
         print("WANDB_API_KEY not found in environment variables.")
     wandb.init(
-        project=cfg.CORRUPTION.DATASET + "_iid" if cfg.MISC.IID else "_niid",
+        project=cfg.CORRUPTION.DATASET + ("_iid" if cfg.MISC.IID else "_niid"),
         config = cfg,
         name = cfg.MODEL.ARCH + cfg.MODEL.ADAPTATION,
         notes = desc,

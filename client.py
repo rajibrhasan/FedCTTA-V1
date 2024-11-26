@@ -21,7 +21,7 @@ class Client(object):
         
         self.configure_model()
         self.params, param_names = self.collect_params()
-        print(f"Learable params: {len(self.params)}")
+        print(f"Learable params: {param_names}")
         self.optimizer = self.setup_optimizer() if len(self.params) > 0 else None
 
         self.model_ema = deepcopy(self.model)
@@ -46,7 +46,7 @@ class Client(object):
 
         }
 
-        self.domain_list = {}
+        self.domain_list = []
         self.pvec = None
 
 

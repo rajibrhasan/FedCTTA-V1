@@ -9,11 +9,20 @@ from fed_utils import ema_update_model
 from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy
 import wandb
 
+
+
+@torch.no_grad()
+def update_model_probs(x_ema, x, momentum=0.9):
+    return momentum * x_ema + (1 - momentum) * x
+
 class Client(object):
     def __init__(self, name, model, cfg, device):
         self.cfg = cfg
         self.name = name 
         self.model = deepcopy(model)
+        self.num_classes = cfg.MODEL.NUM_CLASSES
+        self.momentum_probs = cfg.MISC.MOMENTUM_PROBS
+        
         
         self.configure_model()
         self.params, param_names = self.collect_params()
@@ -43,8 +52,11 @@ class Client(object):
         self.pvec = None
         self.local_features = None
 
+        self.class_probs_ema = 1 / self.num_classes * torch.ones(self.num_classes).to(self.device)
+
 
     def adapt(self, x, y):
+
         self.x = x
         self.y = y
         # self.update_pvec()
@@ -54,24 +66,21 @@ class Client(object):
         outputs = self.model(self.x.to(self.device))
         outputs_ema = self.model_ema(self.x.to(self.device))
 
-        # self.local_features = feats.mean(0).detach().cpu()
+        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+        loss.backward()
+        self.optimizer.step()
+        self.optimizer.zero_grad()
 
-        if self.cfg.MODEL.ADAPTATION != 'source':
-            loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
-            loss.backward()
-            self.optimizer.step()
-            self.optimizer.zero_grad()
+        self.model_ema = ema_update_model(
+            model_to_update=self.model_ema,
+            model_to_merge=self.model,
+            momentum=self.cfg.MISC.MOMENTUM_SRC,
+            device=self.device,
+            update_all=True
+        )
 
-            self.model_ema = ema_update_model(
-                model_to_update=self.model_ema,
-                model_to_merge=self.model,
-                momentum=self.cfg.MISC.MOMENTUM_SRC,
-                device=self.device,
-                update_all=True
-            )
-
-            if len(self.domain_list) % 10==0:
-                wandb.log({f'{self.name}_loss': loss.item()})
+        if len(self.domain_list) % 10==0:
+            wandb.log({f'{self.name}_loss': loss.item()})
 
         self.model.to('cpu')
         self.model_ema.to('cpu')
@@ -90,8 +99,7 @@ class Client(object):
 
         self.total_preds.append(len(self.y))
 
-        self.x = x
-        self.y = y
+        self.class_probs_ema = update_model_probs(x_ema=self.class_probs_ema, x=outputs.softmax(1).mean(0), momentum=self.momentum_probs)
 
     def update_pvec(self):
         pca = PCA(n_components=1)  

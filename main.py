@@ -62,21 +62,31 @@ def main(severity, device):
         
         elif cfg.MODEL.ADAPTATION == 'ours':
             if t % cfg.MISC.AGG_FREQ == 0:
+                similarity_mat = torch.zeros((len(clients), len(clients)))
                 with torch.no_grad():
-                    bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
-                    # feat_vec_list = [client.local_features for client in clients]
-                    # pvec_list = [client.pvec for client in clients]
-                    similarity_mat = torch.zeros((len(bn_params_list), len(bn_params_list)))
-                    for i, bn_params1 in enumerate(bn_params_list):
-                        for j, bn_params2 in enumerate(bn_params_list):
-                            similarity = cosine_similarity(bn_params1, bn_params2)
-                            similarity_mat[i,j] = similarity
+                    if cfg.MISC.EMA_PROBS:
+                        probs_list = [client.class_probs_ema for client in clients]
+                        for i, prob1 in enumerate(probs_list):
+                            for j, prob2 in enumerate(probs_list):
+                                similarity = F.cosine_similarity(prob1.reshape(1, -1), prob2.reshape(1,-1))
+                                similarity_mat[i, j] = similarity.item()
 
-                scaled_similarity = np.array(similarity_mat / cfg.MISC.TEMP)
+                    else:
+                        bn_params_list = [client.extract_bn_weights_and_biases() for client in clients]
+                        # feat_vec_list = [client.local_features for client in clients]
+                        # pvec_list = [client.pvec for client in clients]
+                        
+                        for i, bn_params1 in enumerate(bn_params_list):
+                            for j, bn_params2 in enumerate(bn_params_list):
+                                similarity = cosine_similarity(bn_params1, bn_params2)
+                                similarity_mat[i,j] = similarity
+
+                scaled_similarity = np.array(similarity_mat / 1)
                 # Apply softmax to normalize the similarity values for aggregation
                 exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
                 # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
                 normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
+                print(normalized_similarity)
                 # if t  % 10 == 0:
                 #     print(normalized_similarity)
 
@@ -139,7 +149,7 @@ if __name__ == '__main__':
     else:
         print("WANDB_API_KEY not found in environment variables.")
     wandb.init(
-        project=cfg.CORRUPTION.DATASET + ("_iid" if cfg.MISC.IID else "_niid"),
+        project=cfg.CORRUPTION.DATASET + "_iid" if cfg.MISC.IID else "_niid",
         config = cfg,
         name = cfg.MODEL.ARCH + cfg.MODEL.ADAPTATION,
         notes = desc,

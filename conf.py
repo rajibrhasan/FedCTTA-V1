@@ -32,6 +32,7 @@ _C.MODEL.ARCH = 'Standard'
 # - norm: test-time normalization
 # - tent: test-time entropy minimization (ours)
 _C.MODEL.ADAPTATION = 'ours'
+_C.MODEL.NUM_CLASSES = 10
 
 # By default tent is online, with updates persisting across batches.
 # To make adaptation episodic, and reset the model for each batch, choose True.
@@ -105,6 +106,8 @@ _C.MISC.IID = True
 _C.MISC.KAGGLE = False
 _C.MISC.AGG_FREQ = 1
 _C.MISC.ADAPT_ALL = True
+_C.MISC.EMA_PROBS = True
+_C.MISC.MOMENTUM_PROBS = 0.9
 
 _C.CUDNN = CfgNode()
 

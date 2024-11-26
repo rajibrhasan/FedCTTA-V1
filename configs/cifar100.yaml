@@ -1,5 +1,6 @@
 MODEL:
   ARCH: "Hendrycks2020AugMix_ResNeXt"            # Model architecture: 'Standard', 'ResNet', etc.
+  NUM_CLASSES : 100
 
 CORRUPTION:
   DATASET: "cifar100"          # Dataset for evaluation: 'cifar10', 'cifar100'

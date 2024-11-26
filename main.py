@@ -91,8 +91,8 @@ def main(severity, device):
                 exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
                 # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
                 normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
-
-                print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
+                
+                # print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
 
                 # if t  % 10 == 0:
                 #     print(f'Timestep: {t} || Similarity Matrix')

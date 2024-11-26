@@ -1,14 +1,12 @@
-import numpy as np
-from copy import deepcopy
-
 import torch 
 from torch import nn, optim
 import torch.nn.functional as F
+import numpy as np
+from copy import deepcopy
 from sklearn.decomposition import PCA
 from fed_utils import ema_update_model
 from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy
 import wandb
-
 
 
 @torch.no_grad()
@@ -20,39 +18,36 @@ class Client(object):
         self.cfg = cfg
         self.name = name 
         self.model = deepcopy(model)
-        self.num_classes = cfg.MODEL.NUM_CLASSES
-        self.momentum_probs = cfg.MISC.MOMENTUM_PROBS
-        
         
         self.configure_model()
         self.params, param_names = self.collect_params()
+        print(f"Learable params: {len(self.params)}")
         self.optimizer = self.setup_optimizer() if len(self.params) > 0 else None
 
         self.model_ema = deepcopy(self.model)
         for param in self.model_ema.parameters():
             param.detach_()
 
-        self.total_preds = []
+        self.device = device
+        self.class_probs_ema = 1 / cfg.MODEL.NUM_CLASSES * torch.ones(cfg.MODEL.NUM_CLASSES).to(self.device)
+
+        self.total_preds = 0
         self.correct_before = {
-            'student': [],
-            'teacher': [], 
-            'mixed': []
+            'student': 0,
+            'teacher': 0, 
+            'mixed': 0
 
         }
 
         self.correct_after = {
-            'student': [],
-            'teacher': [], 
-            'mixed': []
+            'student': 0,
+            'teacher': 0, 
+            'mixed': 0
 
         }
 
-        self.domain_list = []
-        self.device = device
+        self.domain_list = {}
         self.pvec = None
-        self.local_features = None
-
-        self.class_probs_ema = 1 / self.num_classes * torch.ones(self.num_classes).to(self.device)
 
 
     def adapt(self, x, y):
@@ -74,32 +69,30 @@ class Client(object):
         self.model_ema = ema_update_model(
             model_to_update=self.model_ema,
             model_to_merge=self.model,
-            momentum=self.cfg.MISC.MOMENTUM_SRC,
+            momentum=self.cfg.MISC.MOMENTUM_TEACHER,
             device=self.device,
             update_all=True
         )
 
-        if len(self.domain_list) % 10==0:
-            wandb.log({f'{self.name}_loss': loss.item()})
+        wandb.log({f'{self.name}_loss': loss.item()})
 
         self.model.to('cpu')
         self.model_ema.to('cpu')
 
         _, st_pred = torch.max(outputs, 1)
         correct_st = (st_pred == self.y.to(self.device)).sum().item()
-        self.correct_before['student'].append(correct_st)
+        self.correct_before['student'] += correct_st
 
         _, t_pred = torch.max(outputs_ema, 1)
         correct_t = (t_pred == self.y.to(self.device)).sum().item()
-        self.correct_before['teacher'].append(correct_t)
+        self.correct_before['teacher'] += correct_t
 
-        _, m_pred = torch.max(outputs_ema+outputs, 1)
+        _, m_pred = torch.max(outputs_ema + outputs, 1)
         correct_m = (m_pred == self.y.to(self.device)).sum().item()
-        self.correct_before['mixed'].append(correct_m)
+        self.correct_before['mixed'] += correct_m
 
-        self.total_preds.append(len(self.y))
-
-        self.class_probs_ema = update_model_probs(x_ema=self.class_probs_ema, x=outputs.softmax(1).mean(0), momentum=self.momentum_probs)
+        self.total_preds += len(self.y)
+        self.class_probs_ema = update_model_probs(x_ema = self.class_probs_ema, x = outputs.softmax(1).mean(0), momentum = self.cfg.MISC.MOMENTUM_PROBS)
 
     def update_pvec(self):
         pca = PCA(n_components=1)  
@@ -115,16 +108,15 @@ class Client(object):
     
             _, st_pred = torch.max(outputs, 1)
             correct_st = (st_pred == self.y.to(self.device)).sum().item()
-            self.correct_after['student'].append(correct_st)
+            self.correct_after['student'] += correct_st
 
             _, t_pred = torch.max(outputs_ema, 1)
             correct_t = (t_pred == self.y.to(self.device)).sum().item()
-            self.correct_after['teacher'].append(correct_t)
-            self.total_preds.append(len(self.y))
+            self.correct_after['teacher'] += correct_t
 
             _, m_pred = torch.max(outputs_ema+outputs, 1)
             correct_m = (m_pred == self.y.to(self.device)).sum().item()
-            self.correct_after['mixed'].append(correct_m)
+            self.correct_after['mixed'] += correct_m
 
         self.model.to('cpu')
         self.model_ema.to('cpu')

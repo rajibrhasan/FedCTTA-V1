@@ -46,7 +46,7 @@ _C.OPTIM = CfgNode()
 _C.OPTIM.STEPS = 1
 
 # Learning rate
-_C.OPTIM.LR = 1e-2
+_C.OPTIM.LR = 1e-3
 
 # Choices: Adam, SGD
 _C.OPTIM.METHOD = 'Adam'
@@ -87,27 +87,38 @@ _C.CORRUPTION.SEVERITY = [5, 4, 3, 2, 1]
 # Number of examples to evaluate (10000 for all samples in CIFAR-10)
 _C.CORRUPTION.NUM_EX = 10000
 
-_C.MISC = CfgNode()
-_C.MISC.NUM_CLIENTS =  20             # Number of clients
-_C.MISC.BATCH_SIZE = 100              # Batch size for each client
-_C.MISC.NUM_STEPS = 750              # Number of steps for each client
-_C.MISC.SPATIAL_H = 0.2
-_C.MISC.TEMPORAL_H = 0.02
-_C.MISC.TEMP = 0.01
 
+# ------------------------------- Federated Learning options ------------------------------ #
+_C.FED = CfgNode()
+# Number of clients in the federated learning setup
+_C.FED.NUM_CLIENTS =  20             # Number of clients
+# Number of samples in each batch
+_C.FED.BATCH_SIZE = 10             # Batch size for each client
+# Number of steps for each client
+_C.FED.NUM_STEPS = 750              # Number of steps for each client
+_C.FED.SPATIAL_H = 0.2
+_C.FED.TEMPORAL_H = 0.02
+_C.FED.IID = True
+_C.FED.AGG_FREQ = 1
+
+# ------------------------------- Misc options ------------------------------ #
+_C.MISC = CfgNode()
 _C.MISC.RNG_SEED = 2
 _C.MISC.SAVE_DIR = "./output"
 _C.MISC.DATA_DIR  =  "./data"
 _C.MISC.CKPT_DIR  = "./ckpt"
 _C.MISC.LOG_DEST = 'log.txt'
 _C.MISC.LOG_TIME = ''
-_C.MISC.MOMENTUM_SRC = 0.99
-_C.MISC.IID = True
-_C.MISC.KAGGLE = False
-_C.MISC.AGG_FREQ = 1
 _C.MISC.ADAPT_ALL = True
-_C.MISC.EMA_PROBS = True
+# Aggregation based on similarity of weigths or ema_probs
+_C.MISC.SIMILARITY = 'weights'
+
+_C.MISC.MOMENTUM_TEACHER = 0.99
 _C.MISC.MOMENTUM_PROBS = 0.9
+_C.MISC.TEMP = 0.01
+_C.MISC.EMA_PROBS_TEMP = 1
+
+# ------------------------------- CUDNN options ------------------------------ #
 
 _C.CUDNN = CfgNode()
 
@@ -115,8 +126,7 @@ _C.CUDNN = CfgNode()
 _C.CUDNN.BENCHMARK = True
 
 
-
-
+# ------------------------------- BN options ------------------------------ #
 _C.BN = CfgNode()
 
 # BN epsilon

@@ -141,7 +141,7 @@ if __name__ == '__main__':
     wandb.init(
         project = f"{cfg.CORRUPTION.DATASET}_{cfg.MODEL.ADAPTATION}_{iid_text}_{cfg.MISC.SIMILARITY}",
         config = cfg,
-        name = cfg.MODEL.ARCH + cfg.MODEL.ADAPTATION,
+        name = f"{cfg.MODEL.ADAPTATION} || ADAPT_ALL : {cfg.MISC.ADAPT_ALL}",
         notes = desc,
         dir= "output"
     )

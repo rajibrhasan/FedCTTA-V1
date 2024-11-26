@@ -32,10 +32,10 @@ def main(severity, device):
     clients = []
     global_model = load_model(cfg.MODEL.ARCH, cfg.MISC.CKPT_DIR, cfg.CORRUPTION.DATASET, ThreatModel.corruptions)
 
-    for i in range(cfg.MISC.NUM_CLIENTS):
+    for i in range(cfg.FED.NUM_CLIENTS):
         clients.append(Client(f'client_{i}', deepcopy(global_model), cfg, device))
 
-    if cfg.MISC.IID:
+    if cfg.FED.IID:
         client_schedule = create_schedule_iid(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H)
     else:
         client_schedule = create_schedule_niid(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H, cfg.FED.SPATIAL_H)

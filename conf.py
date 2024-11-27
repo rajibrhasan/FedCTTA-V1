@@ -111,12 +111,12 @@ _C.MISC.LOG_DEST = 'log.txt'
 _C.MISC.LOG_TIME = ''
 _C.MISC.ADAPT_ALL = True
 # Aggregation based on similarity of weigths or ema_probs
-_C.MISC.SIMILARITY = 'weights'
+_C.MISC.SIMILARITY = 'ema_probs'
 
 _C.MISC.MOMENTUM_TEACHER = 0.99
 _C.MISC.MOMENTUM_PROBS = 0.9
 _C.MISC.TEMP = 0.01
-_C.MISC.EMA_PROBS_TEMP = 1
+_C.MISC.EMA_PROBS_TEMP = 0.1
 
 # ------------------------------- CUDNN options ------------------------------ #
 

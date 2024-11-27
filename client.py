@@ -31,40 +31,31 @@ class Client(object):
         self.device = device
         self.class_probs_ema = 1 / cfg.MODEL.NUM_CLASSES * torch.ones(cfg.MODEL.NUM_CLASSES).to(self.device)
 
-        self.total_preds = 0
-        self.correct_before = {
-            'student': 0,
-            'teacher': 0, 
-            'mixed': 0
-
-        }
-
-        self.correct_after = {
-            'student': 0,
-            'teacher': 0, 
-            'mixed': 0
+        self.total_preds = []
+        self.correct = {
+            'student': [],
+            'teacher': [], 
+            'mixed': []
 
         }
 
         self.domain_list = []
-        self.pvec = None
 
 
     def adapt(self, x, y):
-
         self.x = x
         self.y = y
-        # self.update_pvec()
         self.model.to(self.device)
         self.model_ema.to(self.device)
 
         outputs = self.model(self.x.to(self.device))
         outputs_ema = self.model_ema(self.x.to(self.device))
 
-        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
-        loss.backward()
-        self.optimizer.step()
-        self.optimizer.zero_grad()
+        if self.cfg.MODEL.ADAPTATION != 'ours_bn':
+            loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+            loss.backward()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
         self.model_ema = ema_update_model(
             model_to_update=self.model_ema,
@@ -81,46 +72,18 @@ class Client(object):
 
         _, st_pred = torch.max(outputs, 1)
         correct_st = (st_pred == self.y.to(self.device)).sum().item()
-        self.correct_before['student'] += correct_st
+        self.correct['student'] += correct_st
 
         _, t_pred = torch.max(outputs_ema, 1)
         correct_t = (t_pred == self.y.to(self.device)).sum().item()
-        self.correct_before['teacher'] += correct_t
+        self.correct['teacher'] += correct_t
 
         _, m_pred = torch.max(outputs_ema + outputs, 1)
         correct_m = (m_pred == self.y.to(self.device)).sum().item()
-        self.correct_before['mixed'] += correct_m
+        self.correct['mixed'] += correct_m
 
-        self.total_preds += len(self.y)
+        self.total_preds.append(len(self.y))
         self.class_probs_ema = update_model_probs(x_ema = self.class_probs_ema, x = outputs.softmax(1).mean(0), momentum = self.cfg.MISC.MOMENTUM_PROBS)
-
-    def update_pvec(self):
-        pca = PCA(n_components=1)  
-        pca.fit(self.x.reshape(self.x.shape[0], -1))
-        self.pvec = pca.components_[0]
-
-    def update_acc(self):
-        self.model.to(self.device)
-        self.model_ema.to(self.device)
-        with torch.no_grad():
-            outputs = self.model(self.x.to(self.device))
-            outputs_ema = self.model_ema(self.x.to(self.device))
-    
-            _, st_pred = torch.max(outputs, 1)
-            correct_st = (st_pred == self.y.to(self.device)).sum().item()
-            self.correct_after['student'] += correct_st
-
-            _, t_pred = torch.max(outputs_ema, 1)
-            correct_t = (t_pred == self.y.to(self.device)).sum().item()
-            self.correct_after['teacher'] += correct_t
-
-            _, m_pred = torch.max(outputs_ema+outputs, 1)
-            correct_m = (m_pred == self.y.to(self.device)).sum().item()
-            self.correct_after['mixed'] += correct_m
-
-        self.model.to('cpu')
-        self.model_ema.to('cpu')
-    
 
     def setup_optimizer(self):
         """Set up optimizer for tent adaptation.

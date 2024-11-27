@@ -61,7 +61,7 @@ def main(severity, device):
             for client in clients:
                 client.set_state_dict(deepcopy(w_avg))
         
-        elif cfg.MODEL.ADAPTATION == 'ours':
+        elif 'ours' in cfg.MODEL.ADAPTATION:
             if t % cfg.FED.AGG_FREQ == 0:
                 similarity_mat = torch.zeros((len(clients), len(clients)))
                 with torch.no_grad():
@@ -74,9 +74,6 @@ def main(severity, device):
 
                     elif cfg.MISC.SIMILARITY == 'weights':
                         params_list = [client.extract_bn_weights_and_biases() for client in clients]
-                        # feat_vec_list = [client.local_features for client in clients]
-                        # pvec_list = [client.pvec for client in clients]
-                        
                         for i, params1 in enumerate(params_list):
                             for j, params2 in enumerate(params_list):
                                 similarity = cosine_similarity(params1, params2)

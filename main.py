@@ -23,6 +23,15 @@ from conf import cfg, load_cfg_fom_args
 
 logger = logging.getLogger(__name__)
 
+def softmax_with_temp(similarity_mat, temp):
+    scaled_similarity = np.array(similarity_mat/temp)
+    # Apply softmax to normalize the similarity values for aggregation
+    exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
+    # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
+    normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
+
+    return normalized_similarity
+
 
 def main(severity, device):
     print(f"===============================Dataset: {cfg.CORRUPTION.DATASET} || Batch Size: {cfg.FED.BATCH_SIZE} || Adaptation: {cfg.MODEL.ADAPTATION} || IID : {cfg.FED.IID} || ADAPT_ALL : {cfg.MISC.ADAPT_ALL} || Similarity : {cfg.MISC.SIMILARITY}===============================")
@@ -46,6 +55,7 @@ def main(severity, device):
 
     for t in tqdm(range(cfg.FED.NUM_STEPS)):
         w_locals = []
+        w_locals_ema = []
         for idx, client in enumerate(clients):
             selected_domain = dataset[client_schedule[idx][t]]
             cur_idx = selected_domain['indices'][selected_domain['use_count']]
@@ -53,7 +63,8 @@ def main(severity, device):
             y = selected_domain['all_y'][cur_idx]
             client.domain_list.append(client_schedule[idx][t])
             client.adapt(x, y)
-            w_locals.append(deepcopy(client.get_state_dict()))
+            w_locals.append(deepcopy(client.model.state_dict()))
+            w_locals_ema.append(deepcopy(client.model_ema.state_dict()))
             selected_domain['use_count'] += 1
         
         if cfg.MODEL.ADAPTATION == 'fedavg':
@@ -78,26 +89,27 @@ def main(severity, device):
                             similarity = cosine_similarity(params1, params2)
                             similarity_mat2[i,j] = similarity
 
-                
-                similarity_mat = similarity_mat1 * similarity_mat2    
-                # temperature = cfg.MISC.EMA_PROBS_TEMP if cfg.MISC.SIMILARITY == 'ema_probs' else cfg.MISC.TEMP
-                scaled_similarity = np.array(torch.sqrt(similarity_mat)/0.07)
-                # Apply softmax to normalize the similarity values for aggregation
-                exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
-                # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
-                normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
+                similarity_mat1 = softmax_with_temp(similarity_mat1, 10)
+                similarity_mat2 = softmax_with_temp(-similarity_mat2, 0.01)
+               
                 
                 # print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
 
-                if t  % 10 == 0:
-                    print(f'Timestep: {t} || Similarity Matrix')
-                    print(normalized_similarity)
+                if t  % 100 == 0:
+                    print(f'Timestep: {t} || Similarity Matrix1')
+                    print(similarity_mat1)
+
+                    print(f'Timestep: {t} || Similarity Matrix2')
+                    print(similarity_mat2)
 
                 # wandb.log({"similarity_mat": similarity_mat})
                 
                 for i in range(len(clients)):
-                    ww = FedAvg(w_locals, torch.tensor(normalized_similarity[i]))
-                    clients[i].set_state_dict(deepcopy(ww))
+                    ww1 = FedAvg(w_locals, torch.tensor(similarity_mat1[i]))
+                    clients[i].model.load_state_dict(deepcopy(ww1))
+
+                    ww2 = FedAvg(w_locals_ema, torch.tensor(similarity_mat2[i]))
+                    clients[i].model_ema.load_state_dict(deepcopy(ww2))
 
     
     acc_st = 0

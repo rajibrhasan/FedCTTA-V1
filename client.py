@@ -7,6 +7,7 @@ from sklearn.decomposition import PCA
 from fed_utils import ema_update_model
 from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy
 import wandb
+from transforms_cotta import get_tta_transforms
 
 
 @torch.no_grad()
@@ -30,6 +31,9 @@ class Client(object):
 
         self.device = device
         self.class_probs_ema = 1 / cfg.MODEL.NUM_CLASSES * torch.ones(cfg.MODEL.NUM_CLASSES).to(self.device)
+
+        self.img_size = (32, 32) if "cifar" in cfg.CORRUPTION.DATASET else (224, 224)
+        self.tta_transform = get_tta_transforms(self.img_size, padding_mode="reflect", cotta_augs=False)
 
         self.total_preds = 0
         self.correct_before = {
@@ -58,23 +62,27 @@ class Client(object):
         self.model.to(self.device)
         self.model_ema.to(self.device)
 
-        outputs = self.model(self.x.to(self.device))
-        outputs_ema = self.model_ema(self.x.to(self.device))
+        for i in range(10):
+            x_aug = self.tta_transform(self.x)
+            outputs = self.model(x_aug.to(self.device))
+            outputs_ema = self.model_ema(self.x.to(self.device))
 
-        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
-        loss.backward()
-        self.optimizer.step()
-        self.optimizer.zero_grad()
+            loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+            loss.backward()
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
-        self.model_ema = ema_update_model(
-            model_to_update=self.model_ema,
-            model_to_merge=self.model,
-            momentum=self.cfg.MISC.MOMENTUM_TEACHER,
-            device=self.device,
-            update_all=True
-        )
+            self.model_ema = ema_update_model(
+                model_to_update=self.model_ema,
+                model_to_merge=self.model,
+                momentum=self.cfg.MISC.MOMENTUM_TEACHER,
+                device=self.device,
+                update_all=True
+            )
 
         wandb.log({f'{self.name}_loss': loss.item()})
+        outputs = self.model(self.x.to(self.device))
+        outputs_ema = self.model_ema(self.x.to(self.device))
 
         self.model.to('cpu')
         self.model_ema.to('cpu')
@@ -193,10 +201,10 @@ class Client(object):
         return deepcopy(bn_params)
 
     def get_state_dict(self):
-        return self.model.state_dict()
+        return self.model_ema.state_dict()
     
     def set_state_dict(self, state_dict):
-        self.model.load_state_dict(state_dict)
+        self.model_ema.load_state_dict(state_dict)
     
     def get_model(self):
-        return self.model
+        return self.model_ema

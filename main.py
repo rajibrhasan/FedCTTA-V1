@@ -94,9 +94,9 @@ def main(severity, device):
                 
                 # print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
 
-                # if t  % 10 == 0:
-                #     print(f'Timestep: {t} || Similarity Matrix')
-                #     print(normalized_similarity)
+                if t  % 10 == 0:
+                    print(f'Timestep: {t} || Similarity Matrix')
+                    print(normalized_similarity)
 
                 # wandb.log({"similarity_mat": similarity_mat})
                 
@@ -140,7 +140,7 @@ if __name__ == '__main__':
     iid_text = "iid" if cfg.FED.IID else "niid"
     bn_text = "fm" if cfg.MISC.ADAPT_ALL else "bn"
     wandb.init(
-        project = f"{cfg.CORRUPTION.DATASET}_{cfg.MODEL.ADAPTATION}_{iid_text}_{cfg.MISC.SIMILARITY}",
+        project = f"{cfg.CORRUPTION.DATASET}_{cfg.MODEL.ADAPTATION}_{iid_text}_{cfg.MISC.SIMILARITY}_Iftee1",
         config = cfg,
         name = f"{cfg.MODEL.ADAPTATION}_{bn_text}",
         notes = desc,

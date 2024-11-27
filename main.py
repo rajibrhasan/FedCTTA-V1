@@ -100,15 +100,16 @@ def main(severity, device):
                 for i in range(len(clients)):
                     ww = FedAvg(w_locals, torch.tensor(normalized_similarity[i]))
                     clients[i].set_state_dict(deepcopy(ww))
+            
 
     
     acc_st = 0
     acc_t = 0
     acc_m = 0
     for client in clients:
-        client_acc_st = client.correct_before['student'] / client.total_preds*100
-        client_acc_t = client.correct_before['teacher'] / client.total_preds*100
-        client_acc_m = client.correct_before['mixed'] / client.total_preds*100
+        client_acc_st = sum(client.correct_preds['student']) / sum(client.total_preds)*100
+        client_acc_t = sum(client.correct_preds['teacher']) / sum(client.total_preds)*100
+        client_acc_m = sum(client.correct_preds['mixed']) / sum(client.total_preds)*100
         acc_st += client_acc_st
         acc_t += client_acc_t
         acc_m += client_acc_m

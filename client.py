@@ -8,7 +8,6 @@ from fed_utils import ema_update_model
 from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy
 import wandb
 
-
 @torch.no_grad()
 def update_model_probs(x_ema, x, momentum=0.9):
     return momentum * x_ema + (1 - momentum) * x
@@ -32,7 +31,7 @@ class Client(object):
         self.class_probs_ema = 1 / cfg.MODEL.NUM_CLASSES * torch.ones(cfg.MODEL.NUM_CLASSES).to(self.device)
 
         self.total_preds = []
-        self.correct = {
+        self.correct_preds = {
             'student': [],
             'teacher': [], 
             'mixed': []
@@ -72,15 +71,15 @@ class Client(object):
 
         _, st_pred = torch.max(outputs, 1)
         correct_st = (st_pred == self.y.to(self.device)).sum().item()
-        self.correct['student'] += correct_st
+        self.correct_preds['student'].append(correct_st)
 
         _, t_pred = torch.max(outputs_ema, 1)
         correct_t = (t_pred == self.y.to(self.device)).sum().item()
-        self.correct['teacher'] += correct_t
+        self.correct_preds['teacher'].append(correct_t)
 
         _, m_pred = torch.max(outputs_ema + outputs, 1)
         correct_m = (m_pred == self.y.to(self.device)).sum().item()
-        self.correct['mixed'] += correct_m
+        self.correct_preds['mixed'].append(correct_m)
 
         self.total_preds.append(len(self.y))
         self.class_probs_ema = update_model_probs(x_ema = self.class_probs_ema, x = outputs.softmax(1).mean(0), momentum = self.cfg.MISC.MOMENTUM_PROBS)

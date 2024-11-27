@@ -1,9 +1,12 @@
 python main.py --cfg configs/cifar10.yaml \
 --opts FED.IID True \
-MISC.SIMILARITY weights \
+MISC.SIMILARITY ema_probs \
 MODEL.ADAPTATION ours_grad \
 FED.BATCH_SIZE 10 \
 FED.TEMPORAL_H 0.02 \
 FED.SPATIAL_H 0.2 \
 MISC.ADAPT_ALL False \
-FED.AGG_FREQ 1
+FED.AGG_FREQ 1 \
+OPTIM.LR 0.01 \
+MISC.RNG_SEED = 2 \
+MISC.EMA_PROBS_TEMP = 0.1

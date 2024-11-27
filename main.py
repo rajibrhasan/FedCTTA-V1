@@ -63,30 +63,25 @@ def main(severity, device):
         
         elif cfg.MODEL.ADAPTATION == 'ours':
             if t % cfg.FED.AGG_FREQ == 0:
-                similarity_mat = torch.zeros((len(clients), len(clients)))
                 with torch.no_grad():
-                    if cfg.MISC.SIMILARITY == 'ema_probs':
-                        probs_list = [client.class_probs_ema for client in clients]
-                        for i, prob1 in enumerate(probs_list):
-                            for j, prob2 in enumerate(probs_list):
-                                similarity = F.cosine_similarity(prob1.reshape(1, -1), prob2.reshape(1,-1))
-                                similarity_mat[i, j] = similarity.item()
+                    similarity_mat1 = torch.zeros((len(clients), len(clients)))
+                    probs_list = [client.class_probs_ema for client in clients]
+                    for i, prob1 in enumerate(probs_list):
+                        for j, prob2 in enumerate(probs_list):
+                            similarity = F.cosine_similarity(prob1.reshape(1, -1), prob2.reshape(1,-1))
+                            similarity_mat1[i, j] = similarity.item()
 
-                    elif cfg.MISC.SIMILARITY == 'weights':
-                        params_list = [client.extract_bn_weights_and_biases() for client in clients]
-                        # feat_vec_list = [client.local_features for client in clients]
-                        # pvec_list = [client.pvec for client in clients]
-                        
-                        for i, params1 in enumerate(params_list):
-                            for j, params2 in enumerate(params_list):
-                                similarity = cosine_similarity(params1, params2)
-                                similarity_mat[i,j] = similarity
-                    
-                    else:
-                        NotImplementedError(f"Similarity method {cfg.MISC.SIMILARITY} not implemented")
+                    similarity_mat2 = torch.zeros((len(clients), len(clients)))
+                    params_list = [client.extract_bn_weights_and_biases() for client in clients]
+                    for i, params1 in enumerate(params_list):
+                        for j, params2 in enumerate(params_list):
+                            similarity = cosine_similarity(params1, params2)
+                            similarity_mat2[i,j] = similarity
 
-                temperature = cfg.MISC.EMA_PROBS_TEMP if cfg.MISC.SIMILARITY == 'ema_probs' else cfg.MISC.TEMP
-                scaled_similarity = np.array(similarity_mat / temperature)
+                
+                similarity_mat = similarity_mat1 * similarity_mat2    
+                # temperature = cfg.MISC.EMA_PROBS_TEMP if cfg.MISC.SIMILARITY == 'ema_probs' else cfg.MISC.TEMP
+                scaled_similarity = np.array(torch.sqrt(similarity_mat)/0.07)
                 # Apply softmax to normalize the similarity values for aggregation
                 exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
                 # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
@@ -94,9 +89,9 @@ def main(severity, device):
                 
                 # print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
 
-                # if t  % 10 == 0:
-                #     print(f'Timestep: {t} || Similarity Matrix')
-                #     print(normalized_similarity)
+                if t  % 10 == 0:
+                    print(f'Timestep: {t} || Similarity Matrix')
+                    print(normalized_similarity)
 
                 # wandb.log({"similarity_mat": similarity_mat})
                 
@@ -140,7 +135,7 @@ if __name__ == '__main__':
     iid_text = "iid" if cfg.FED.IID else "niid"
     bn_text = "fm" if cfg.MISC.ADAPT_ALL else "bn"
     wandb.init(
-        project = f"{cfg.CORRUPTION.DATASET}_{cfg.MODEL.ADAPTATION}_{iid_text}_{cfg.MISC.SIMILARITY}",
+        project = f"{cfg.CORRUPTION.DATASET}_{cfg.MODEL.ADAPTATION}_{iid_text}_both",
         config = cfg,
         name = f"{cfg.MODEL.ADAPTATION}_{bn_text}",
         notes = desc,

@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def main(severity, device):
-    print(f"===============================Dataset: {cfg.CORRUPTION.DATASET} || Batch Size: {cfg.FED.BATCH_SIZE} || Adaptation: {cfg.MODEL.ADAPTATION} || IID : {cfg.FED.IID} || ADAPT_ALL : {cfg.MISC.ADAPT_ALL} || Similarity : {cfg.MISC.SIMILARITY}===============================")
+    print(f"==================Dataset: {cfg.CORRUPTION.DATASET} || Batch Size: {cfg.FED.BATCH_SIZE} || Adaptation: {cfg.MODEL.ADAPTATION} || IID : {cfg.FED.IID} || ADAPT_ALL : {cfg.MISC.ADAPT_ALL} || Similarity : {cfg.MISC.SIMILARITY}==================")
     max_use_count = cfg.CORRUPTION.NUM_EX // cfg.FED.BATCH_SIZE 
     
     dataset = get_dataset(cfg, severity, cfg.CORRUPTION.DATASET)
@@ -39,16 +39,14 @@ def main(severity, device):
         client_schedule = create_schedule_iid(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H)
     else:
         client_schedule = create_schedule_niid(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H, cfg.FED.SPATIAL_H)
-    
-    # logger.info('Client schedule: \n')
-    # logger.info(client_schedule)
 
-
+    total_indices_sum = 0
     for t in tqdm(range(cfg.FED.NUM_STEPS)):
         w_locals = []
         for idx, client in enumerate(clients):
             selected_domain = dataset[client_schedule[idx][t]]
             cur_idx = selected_domain['indices'][selected_domain['use_count']]
+            total_indices_sum += sum(cur_idx)
             x = selected_domain['all_x'][cur_idx]
             y = selected_domain['all_y'][cur_idx]
             client.domain_list.append(client_schedule[idx][t])
@@ -83,26 +81,24 @@ def main(severity, device):
                         NotImplementedError(f"Similarity method {cfg.MISC.SIMILARITY} not implemented")
 
                 temperature = cfg.MISC.EMA_PROBS_TEMP if cfg.MISC.SIMILARITY == 'ema_probs' else cfg.MISC.TEMP
-                scaled_similarity = np.array(similarity_mat / temperature)
-                # Apply softmax to normalize the similarity values for aggregation
-                exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
-                # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
-                normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
-                
+                scaled_similarity = similarity_mat / temperature
+                normalized_similarity = F.softmax(scaled_similarity, dim = 1)
+                # # Apply softmax to normalize the similarity values for aggregation
+                # exp_scaled_similarity = np.exp(scaled_similarity - np.max(scaled_similarity, axis=1, keepdims=True))  # Subtract max for numerical stability
+                # # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
+                # normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
                 # print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
 
-                # if t  % 10 == 0:
-                #     print(f'Timestep: {t} || Similarity Matrix')
-                #     print(normalized_similarity)
+                if t % 50 == 0:
+                    print(f'Timestep: {t} || Similarity Matrix')
+                    print(normalized_similarity)
 
                 # wandb.log({"similarity_mat": similarity_mat})
                 
                 for i in range(len(clients)):
-                    ww = FedAvg(w_locals, torch.tensor(normalized_similarity[i]))
+                    ww = FedAvg(w_locals, normalized_similarity[i])
                     clients[i].set_state_dict(deepcopy(ww))
             
-
-    
     acc_st = 0
     acc_t = 0
     acc_m = 0
@@ -121,6 +117,12 @@ def main(severity, device):
     print(f'Global accuracy(Teacher): {acc_t/len(clients) : 0.3f}')
     print(f'Global accuracy(Mixed): {acc_m/len(clients) : 0.3f}')
 
+    logger.info(f'Global accuracy(Student): {acc_st/len(clients) : 0.3f}')
+    logger.info(f'Global accuracy(Teacher): {acc_t/len(clients) : 0.3f}')
+    logger.info(f'Global accuracy(Mixed): {acc_m/len(clients) : 0.3f}')
+
+
+    print(total_indices_sum)
 
 
 if __name__ == '__main__':

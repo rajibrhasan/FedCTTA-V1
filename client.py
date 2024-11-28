@@ -6,6 +6,7 @@ from copy import deepcopy
 from sklearn.decomposition import PCA
 from fed_utils import ema_update_model
 from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy
+from transforms_cotta import get_tta_transforms
 import wandb
 
 @torch.no_grad()
@@ -17,6 +18,7 @@ class Client(object):
         self.cfg = cfg
         self.name = name 
         self.model = deepcopy(model)
+        self.img_size = (32, 32) if "cifar" in self.cfg.CORRUPTION_DATASET else (224, 224)
         
         self.configure_model()
         self.params, param_names = self.collect_params()
@@ -29,6 +31,8 @@ class Client(object):
 
         self.device = device
         self.class_probs_ema = 1 / cfg.MODEL.NUM_CLASSES * torch.ones(cfg.MODEL.NUM_CLASSES).to(self.device)
+        # self.class_probs_ema = None
+        self.tta_aug = get_tta_transforms(self.img_size)
 
         self.total_preds = []
         self.correct_preds = {
@@ -55,6 +59,9 @@ class Client(object):
             loss.backward()
             self.optimizer.step()
             self.optimizer.zero_grad()
+            wandb.log({f'{self.name}_loss': loss.item()})
+
+
 
         self.model_ema = ema_update_model(
             model_to_update=self.model_ema,
@@ -64,7 +71,7 @@ class Client(object):
             update_all=True
         )
 
-        wandb.log({f'{self.name}_loss': loss.item()})
+        
 
         self.model.to('cpu')
         self.model_ema.to('cpu')
@@ -82,7 +89,10 @@ class Client(object):
         self.correct_preds['mixed'].append(correct_m)
 
         self.total_preds.append(len(self.y))
-        self.class_probs_ema = update_model_probs(x_ema = self.class_probs_ema, x = outputs.softmax(1).mean(0), momentum = self.cfg.MISC.MOMENTUM_PROBS)
+        if self.class_probs_ema is None:
+            self.class_probs_ema = outputs.softmax(1).mean(0)
+        else:
+            self.class_probs_ema = update_model_probs(x_ema = self.class_probs_ema, x = outputs.softmax(1).mean(0), momentum = self.cfg.MISC.MOMENTUM_PROBS)
 
     def setup_optimizer(self):
         """Set up optimizer for tent adaptation.

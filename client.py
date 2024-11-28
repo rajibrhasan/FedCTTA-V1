@@ -87,7 +87,7 @@ class Client(object):
 
         anchor_prob = torch.nn.functional.softmax(self.src_model(x.to(self.device)), dim=1).max(1)[0]
 
-        if self.cfg.USE_AUG and anchor_prob.mean(0)<self.cfg.OPTIM.AP:
+        if self.cfg.MISC.USE_AUG and anchor_prob.mean(0)<self.cfg.OPTIM.AP:
             outputs_emas = []
             for i in range(self.cfg.MISC.N_AUGMENTATIONS):
                 outputs_  = self.model_ema(self.tta_aug(x).to(self.device)).detach()
@@ -98,7 +98,7 @@ class Client(object):
         loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
         im_loss = information_maximization_loss(outputs)
 
-        if self.cfg.USE_IMLOSS:
+        if self.cfg.MISC.USE_IMLOSS:
             loss += im_loss
 
         loss.backward()

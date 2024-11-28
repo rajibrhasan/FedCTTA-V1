@@ -82,6 +82,7 @@ class Client(object):
 
         outputs = self.model(self.x.to(self.device))
         outputs_ema = self.model_ema(self.x.to(self.device))
+
         # outputs_emas = []
 
         # for i in range(self.cfg.MISC.N_AUGMENTATIONS):
@@ -90,7 +91,6 @@ class Client(object):
        
         # outputs_ema = torch.stack(outputs_emas).mean(0)
 
-        
         loss_ce = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
         im_loss = information_maximization_loss(outputs)
 

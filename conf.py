@@ -115,6 +115,8 @@ _C.MISC.MOMENTUM_TEACHER = 0.99
 _C.MISC.MOMENTUM_PROBS = 0.9
 _C.MISC.TEMP = 0.01
 _C.MISC.EMA_PROBS_TEMP = 0.1
+_C.MISC.USE_IMLOSS = True
+_C.MISC.USE_AUG = True
 
 # ------------------------------- CUDNN options ------------------------------ #
 

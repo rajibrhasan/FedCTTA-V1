@@ -47,6 +47,7 @@ class Client(object):
         self.cfg = cfg
         self.name = name 
         self.model = deepcopy(model)
+        self.src_model = deepcopy(model)
         self.img_size = (32, 32) if "cifar" in self.cfg.CORRUPTION.DATASET else (224, 224)
         
         self.configure_model()
@@ -83,18 +84,22 @@ class Client(object):
         outputs = self.model(self.x.to(self.device))
         outputs_ema = self.model_ema(self.x.to(self.device))
 
-        # outputs_emas = []
+        anchor_prob = torch.nn.functional.softmax(self.src_model(x.to(self.device)), dim=1).max(1)[0]
 
-        # for i in range(self.cfg.MISC.N_AUGMENTATIONS):
-        #     outputs_  = self.model_ema(self.tta_aug(x).to(self.device)).detach()
-        #     outputs_emas.append(outputs_)
-       
-        # outputs_ema = torch.stack(outputs_emas).mean(0)
+        if self.cfg.USE_AUG and anchor_prob.mean(0)<self.cfg.OPTIM.AP:
+            outputs_emas = []
+            for i in range(self.cfg.MISC.N_AUGMENTATIONS):
+                outputs_  = self.model_ema(self.tta_aug(x).to(self.device)).detach()
+                outputs_emas.append(outputs_)
+        
+            outputs_ema = torch.stack(outputs_emas).mean(0)
 
-        loss_ce = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
         im_loss = information_maximization_loss(outputs)
 
-        loss = loss_ce + im_loss
+        if self.cfg.USE_IMLOSS:
+            loss += im_loss
+
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()

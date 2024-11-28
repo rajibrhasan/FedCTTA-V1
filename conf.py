@@ -112,6 +112,7 @@ _C.MISC.LOG_TIME = ''
 _C.MISC.ADAPT_ALL = True
 # Aggregation based on similarity of weigths or ema_probs
 _C.MISC.SIMILARITY = 'ema_probs'
+_C.MISC.N_AUGMENTATIONS = 32
 
 _C.MISC.MOMENTUM_TEACHER = 0.99
 _C.MISC.MOMENTUM_PROBS = 0.9

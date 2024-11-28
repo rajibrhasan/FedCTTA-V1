@@ -18,7 +18,9 @@ class Client(object):
         self.cfg = cfg
         self.name = name 
         self.model = deepcopy(model)
-        self.img_size = (32, 32) if "cifar" in self.cfg.CORRUPTION_DATASET else (224, 224)
+        self.img_size = (32, 32) if "cifar" in self.cfg.CORRUPTION.DATASET else (224, 224)
+        self.decay_factor = 0.94
+        self.min_mom = 0.005
         
         self.configure_model()
         self.params, param_names = self.collect_params()
@@ -44,49 +46,60 @@ class Client(object):
 
         self.domain_list = []
 
+    def get_transform_images(self, x):
+        x_temp = []
+        for _ in range(self.cfg.MISC.N_AUGMENTATIONS):
+            x_temp.append(self.tta_aug(x))
+        
+        x_temp = torch.stack(x_temp)
+        return x_temp
 
     def adapt(self, x, y):
         self.x = x
         self.y = y
         self.model.to(self.device)
-        self.model_ema.to(self.device)
-
-        outputs = self.model(self.x.to(self.device))
-        outputs_ema = self.model_ema(self.x.to(self.device))
-
-        if self.cfg.MODEL.ADAPTATION != 'ours_bn':
-            loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
-            loss.backward()
-            self.optimizer.step()
-            self.optimizer.zero_grad()
-            wandb.log({f'{self.name}_loss': loss.item()})
+        # self.model_ema.to(self.device)
+        outputs = []
+        mom_pre = 0.1
 
 
+        # outputs = self.model(self.x.to(self.device))
+        # outputs_ema = self.model_ema(self.x.to(self.device))
+        for img in x:
+            self.model.eval()
+            mom_new = (mom_pre * self.decay_factor)
+            for m in self.model.modules():
+                if isinstance(m, (nn.BatchNorm2d, nn.BatchNorm1d, nn.BatchNorm1d)):
+                    m.train()
+                    m.momentum = mom_new + self.min_mom
+            mom_pre = mom_new
+            _ = self.model(self.get_transform_images(img).to(self.device))
+            outputs.append(self.model(img.to(self.device)))
 
-        self.model_ema = ema_update_model(
-            model_to_update=self.model_ema,
-            model_to_merge=self.model,
-            momentum=self.cfg.MISC.MOMENTUM_TEACHER,
-            device=self.device,
-            update_all=True
-        )
 
-        
+        # self.model_ema = ema_update_model(
+        #     model_to_update=self.model_ema,
+        #     model_to_merge=self.model,
+        #     momentum=self.cfg.MISC.MOMENTUM_TEACHER,
+        #     device=self.device,
+        #     update_all=True
+        # )
 
         self.model.to('cpu')
-        self.model_ema.to('cpu')
+        # self.model_ema.to('cpu')
+        outputs = torch.stack(outputs).squeeze(1)
 
         _, st_pred = torch.max(outputs, 1)
         correct_st = (st_pred == self.y.to(self.device)).sum().item()
         self.correct_preds['student'].append(correct_st)
 
-        _, t_pred = torch.max(outputs_ema, 1)
-        correct_t = (t_pred == self.y.to(self.device)).sum().item()
-        self.correct_preds['teacher'].append(correct_t)
+        # _, t_pred = torch.max(outputs_ema, 1)
+        # correct_t = (t_pred == self.y.to(self.device)).sum().item()
+        # self.correct_preds['teacher'].append(correct_t)
 
-        _, m_pred = torch.max(outputs_ema + outputs, 1)
-        correct_m = (m_pred == self.y.to(self.device)).sum().item()
-        self.correct_preds['mixed'].append(correct_m)
+        # _, m_pred = torch.max(outputs_ema + outputs, 1)
+        # correct_m = (m_pred == self.y.to(self.device)).sum().item()
+        # self.correct_preds['mixed'].append(correct_m)
 
         self.total_preds.append(len(self.y))
         if self.class_probs_ema is None:

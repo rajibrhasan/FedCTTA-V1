@@ -52,13 +52,14 @@ class Client(object):
         self.model_ema.to(self.device)
 
         outputs = self.model(self.x.to(self.device))
-        outputs_emas = []
+        outputs_ema = self.model_ema(self.x.to(self.device))
+        # outputs_emas = []
 
-        for i in range(self.cfg.MISC.N_AUGMENTATIONS):
-            outputs_  = self.model_ema(self.tta_aug(x).to(self.device)).detach()
-            outputs_emas.append(outputs_)
+        # for i in range(self.cfg.MISC.N_AUGMENTATIONS):
+        #     outputs_  = self.model_ema(self.tta_aug(x).to(self.device)).detach()
+        #     outputs_emas.append(outputs_)
        
-        outputs_ema = torch.stack(outputs_emas).mean(0)
+        # outputs_ema = torch.stack(outputs_emas).mean(0)
        
         loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
         loss.backward()

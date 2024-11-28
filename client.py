@@ -5,13 +5,42 @@ import numpy as np
 from copy import deepcopy
 from sklearn.decomposition import PCA
 from fed_utils import ema_update_model
-from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy
+from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy, information_maximization_loss
 from transforms_cotta import get_tta_transforms
 import wandb
 
 @torch.no_grad()
 def update_model_probs(x_ema, x, momentum=0.9):
     return momentum * x_ema + (1 - momentum) * x
+
+def entropy_loss(probs) -> torch.Tensor:
+    """
+    Calculate the entropy loss for a given probability distribution.
+
+    Args:
+        probs: The probability distribution.
+
+    Returns:
+        The entropy loss.
+    """
+    ent = (-torch.sum(probs * torch.log(probs + 1e-16), dim=1)).mean()
+    return ent.mean()
+
+
+def diversity_loss(ensemble_probs) -> torch.Tensor:
+    """
+    Calculate the diversity loss for an ensemble of models.
+
+    Args:
+        ensemble_probs: The probability distributions of the ensemble.
+
+    Returns:
+        The diversity loss.
+    """
+    mean_probs = ensemble_probs.mean(dim=0)
+    div = -torch.sum(mean_probs * torch.log(mean_probs + 1e-16))
+    return div
+
 
 class Client(object):
     def __init__(self, name, model, cfg, device):
@@ -60,8 +89,13 @@ class Client(object):
         #     outputs_emas.append(outputs_)
        
         # outputs_ema = torch.stack(outputs_emas).mean(0)
+
+        
        
-        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+        loss_ce = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+        im_loss = information_maximization_loss(outputs)
+
+        loss = loss_ce + im_loss
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()

@@ -90,9 +90,9 @@ def main(severity, device):
                 # normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
                 # print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
 
-                if t % int((1/ cfg.FED.TEMPORAL_H)) == 0:
-                    print(f'Timestep: {t} || Similarity Matrix')
-                    print(normalized_similarity)
+                # if t % int((1/ cfg.FED.TEMPORAL_H)) == 0:
+                #     print(f'Timestep: {t} || Similarity Matrix')
+                #     print(normalized_similarity)
 
                 # wandb.log({"similarity_mat": similarity_mat})
                 for i in range(len(clients)):

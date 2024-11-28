@@ -18,17 +18,17 @@ class Client(object):
         self.cfg = cfg
         self.name = name 
         self.model = deepcopy(model)
-        self.img_size = (32, 32) if "cifar" in self.cfg.CORRUPTION_DATASET else (224, 224)
+        self.img_size = (32, 32) if "cifar" in self.cfg.CORRUPTION.DATASET else (224, 224)
         
         self.configure_model()
         self.params, param_names = self.collect_params()
         # print(f"Learable params: {param_names}")
         self.optimizer = self.setup_optimizer() if len(self.params) > 0 else None
-
         self.model_ema = deepcopy(self.model)
         for param in self.model_ema.parameters():
             param.detach_()
-
+        
+        self.model_state = deepcopy(model.state_dict())
         self.device = device
         self.class_probs_ema = 1 / cfg.MODEL.NUM_CLASSES * torch.ones(cfg.MODEL.NUM_CLASSES).to(self.device)
         # self.class_probs_ema = None
@@ -52,29 +52,38 @@ class Client(object):
         self.model_ema.to(self.device)
 
         outputs = self.model(self.x.to(self.device))
-        outputs_ema = self.model_ema(self.x.to(self.device))
+        outputs_emas = []
 
-        if self.cfg.MODEL.ADAPTATION != 'ours_bn':
-            loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
-            loss.backward()
-            self.optimizer.step()
-            self.optimizer.zero_grad()
-            wandb.log({f'{self.name}_loss': loss.item()})
-
-
+        for i in range(self.cfg.MISC.N_AUGMENTATIONS):
+            outputs_  = self.model_ema(self.tta_aug(x).to(self.device)).detach()
+            outputs_emas.append(outputs_)
+       
+        outputs_ema = torch.stack(outputs_emas).mean(0)
+       
+        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+        loss.backward()
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+        wandb.log({f'{self.name}_loss': loss.item()})
 
         self.model_ema = ema_update_model(
             model_to_update=self.model_ema,
             model_to_merge=self.model,
-            momentum=self.cfg.MISC.MOMENTUM_TEACHER,
+            momentum=self.cfg.OPTIM.MT,
             device=self.device,
             update_all=True
         )
 
-        
-
         self.model.to('cpu')
         self.model_ema.to('cpu')
+
+        if self.cfg.OPTIM.RST> 0:
+            for nm, m  in self.model.named_modules():
+                for npp, p in m.named_parameters():
+                    if npp in ['weight', 'bias'] and p.requires_grad:
+                        mask = (torch.rand(p.shape) < self.cfg.OPTIM.RST).float()
+                        with torch.no_grad():
+                            p.data = self.model_state[f"{nm}.{npp}"] * mask + p * (1.-mask)
 
         _, st_pred = torch.max(outputs, 1)
         correct_st = (st_pred == self.y.to(self.device)).sum().item()

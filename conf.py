@@ -38,7 +38,6 @@ _C.MODEL.NUM_CLASSES = 10
 # To make adaptation episodic, and reset the model for each batch, choose True.
 _C.MODEL.EPISODIC = False
 
-
 # ------------------------------- Optimizer options ------------------------- #
 _C.OPTIM = CfgNode()
 
@@ -67,7 +66,7 @@ _C.OPTIM.NESTEROV = True
 _C.OPTIM.WD = 0.0
 
 # COTTA
-_C.OPTIM.MT = 0.99
+_C.OPTIM.MT = 0.999
 _C.OPTIM.RST = 0.01
 _C.OPTIM.AP = 0.92
 
@@ -100,7 +99,6 @@ _C.FED.SPATIAL_H = 0.2
 _C.FED.TEMPORAL_H = 0.02
 _C.FED.IID = True
 _C.FED.AGG_FREQ = 1
-
 # ------------------------------- Misc options ------------------------------ #
 _C.MISC = CfgNode()
 _C.MISC.RNG_SEED = 2
@@ -112,7 +110,7 @@ _C.MISC.LOG_TIME = ''
 _C.MISC.ADAPT_ALL = True
 # Aggregation based on similarity of weigths or ema_probs
 _C.MISC.SIMILARITY = 'ema_probs'
-
+_C.MISC.N_AUGMENTATIONS = 32
 _C.MISC.MOMENTUM_TEACHER = 0.99
 _C.MISC.MOMENTUM_PROBS = 0.9
 _C.MISC.TEMP = 0.01
@@ -134,8 +132,6 @@ _C.BN.EPS = 1e-5
 
 # BN momentum (BN momentum in PyTorch = 1 - BN momentum in Caffe2)
 _C.BN.MOM = 0.1
-
-
 
 def assert_and_infer_cfg():
     """Checks config values invariants."""

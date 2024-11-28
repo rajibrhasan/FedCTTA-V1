@@ -80,6 +80,7 @@ class Client(object):
         self.y = y
         self.model.to(self.device)
         self.model_ema.to(self.device)
+        self.src_model.to(self.device)
 
         outputs = self.model(self.x.to(self.device))
         outputs_ema = self.model_ema(self.x.to(self.device))
@@ -115,6 +116,7 @@ class Client(object):
 
         self.model.to('cpu')
         self.model_ema.to('cpu')
+        self.src_model.to('cpu')
 
         if self.cfg.OPTIM.RST> 0:
             for nm, m  in self.model.named_modules():

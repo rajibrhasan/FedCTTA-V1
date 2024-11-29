@@ -65,9 +65,9 @@ def process_grad(clients):
     for client in clients:
         local_grads.append(client.get_grad())
         if not gloabal_grad:
-            global_grad = client.get_grad()
+            global_grad = local_grads[-1]
         else:
-            global_grad += client.get_grad()
+            global_grad += local_grads[-1]
     
     global_grad /= len(clients)
 

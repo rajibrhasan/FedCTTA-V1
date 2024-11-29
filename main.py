@@ -100,10 +100,11 @@ def main(severity, device):
                     ww = FedAvg(w_locals, normalized_similarity[i])
                     clients[i].set_state_dict(deepcopy(ww))
 
-                w_locals_ema = [deepcopy(client.model_ema.state_dict()) for client in clients]
-                w_avg = FedAvg(w_locals_ema)
-                for client in clients:
-                    client.model_ema.load_state_dict(deepcopy(w_avg))
+                if cfg.MISC.TEACHER_AVG:
+                    w_locals_ema = [deepcopy(client.model_ema.state_dict()) for client in clients]
+                    w_avg = FedAvg(w_locals_ema)
+                    for client in clients:
+                        client.model_ema.load_state_dict(deepcopy(w_avg))
             
     acc_st = 0
     acc_t = 0

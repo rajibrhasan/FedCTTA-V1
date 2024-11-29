@@ -13,35 +13,6 @@ import wandb
 def update_model_probs(x_ema, x, momentum=0.9):
     return momentum * x_ema + (1 - momentum) * x
 
-def entropy_loss(probs) -> torch.Tensor:
-    """
-    Calculate the entropy loss for a given probability distribution.
-
-    Args:
-        probs: The probability distribution.
-
-    Returns:
-        The entropy loss.
-    """
-    ent = (-torch.sum(probs * torch.log(probs + 1e-16), dim=1)).mean()
-    return ent.mean()
-
-
-def diversity_loss(ensemble_probs) -> torch.Tensor:
-    """
-    Calculate the diversity loss for an ensemble of models.
-
-    Args:
-        ensemble_probs: The probability distributions of the ensemble.
-
-    Returns:
-        The diversity loss.
-    """
-    mean_probs = ensemble_probs.mean(dim=0)
-    div = -torch.sum(mean_probs * torch.log(mean_probs + 1e-16))
-    return div
-
-
 class Client(object):
     def __init__(self, name, model, cfg, device):
         self.cfg = cfg

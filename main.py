@@ -139,7 +139,7 @@ if __name__ == '__main__':
     
     iid_text = "iid" if cfg.FED.IID else "niid"
     bn_text = "fm" if cfg.MISC.ADAPT_ALL else "bn"
-    bn_text += f"_RST_{cfg.OPTIM.RST}_AUG_{cfg.MISC.USE_AUG}_IMLOSS_{cfg.MISC.USE_IMLOSS}"
+    bn_text += f"_Batch{cfg.FED.BATCH_SIZE}_RST_{cfg.OPTIM.RST}_AUG_{cfg.MISC.USE_AUG}_IMLOSS_{cfg.MISC.USE_IMLOSS}"
     wandb.init(
         project = f"{cfg.CORRUPTION.DATASET}_{cfg.MODEL.ADAPTATION}_{iid_text}_{cfg.MISC.SIMILARITY}",
         config = cfg,

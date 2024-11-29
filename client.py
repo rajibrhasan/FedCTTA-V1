@@ -89,7 +89,7 @@ class Client(object):
         self.model_ema.to('cpu')
         self.src_model.to('cpu')
 
-        if self.cfg.OPTIM.RST> 0:
+        if len(self.domain_list) % 20 == 0 and self.cfg.OPTIM.RST> 0:
             for nm, m  in self.model.named_modules():
                 for npp, p in m.named_parameters():
                     if npp in ['weight', 'bias'] and p.requires_grad:

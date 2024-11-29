@@ -77,6 +77,7 @@ def main(severity, device):
                             for j, params2 in enumerate(params_list):
                                 similarity = cosine_similarity(params1, params2)
                                 similarity_mat[i,j] = similarity
+                        
                     
                     else:
                         NotImplementedError(f"Similarity method {cfg.MISC.SIMILARITY} not implemented")
@@ -98,6 +99,11 @@ def main(severity, device):
                 for i in range(len(clients)):
                     ww = FedAvg(w_locals, normalized_similarity[i])
                     clients[i].set_state_dict(deepcopy(ww))
+
+                w_locals_ema = [deepcopy(client.model_ema.state_dict()) for client in clients]
+                w_avg = FedAvg(w_locals_ema)
+                for client in clients:
+                    client.model_ema.load_state_dict(deepcopy(w_avg))
             
     acc_st = 0
     acc_t = 0

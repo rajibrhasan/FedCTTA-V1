@@ -70,7 +70,7 @@ class Client(object):
         im_loss = information_maximization_loss(outputs)
 
         if self.cfg.MISC.USE_IMLOSS:
-            loss += im_loss
+            loss += 2*im_loss
 
         loss.backward()
         self.optimizer.step()

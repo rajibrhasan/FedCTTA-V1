@@ -2,7 +2,7 @@ python main.py \
 --cfg configs/cifar100.yaml \
 --opts FED.IID True \
 FED.NUM_CLIENTS 10 \
-MISC.SIMILARITY weights \
+MISC.SIMILARITY ema_probs \
 MODEL.ADAPTATION ours \
 FED.BATCH_SIZE 200 \
 FED.TEMPORAL_H 0.2 \

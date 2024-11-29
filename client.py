@@ -47,6 +47,7 @@ class Client(object):
 
 
     def adapt(self, x, y):
+        self.optimizer.zero_grad()
         self.x = x
         self.y = y
         self.model.to(self.device)
@@ -74,7 +75,6 @@ class Client(object):
 
         loss.backward()
         self.optimizer.step()
-        self.optimizer.zero_grad()
         wandb.log({f'{self.name}_loss': loss.item()})
 
         self.model_ema = ema_update_model(
@@ -187,13 +187,13 @@ class Client(object):
 
     def get_grad(self):
         gradients = []
-        for param in self.model.parameters():
+        for name, param in self.model.named_parameters():
             if param.grad is not None:
                 gradients.append(param.grad.view(-1))  # Flatten each gradient tensor
 
         # Concatenate all gradients
         flat_gradients = torch.cat(gradients)
-        return flat_gradients
+        return deepcopy(flat_gradients)
 
     def get_state_dict(self):
         return self.model.state_dict()

@@ -117,6 +117,7 @@ _C.MISC.TEMP = 0.01
 _C.MISC.EMA_PROBS_TEMP = 0.1
 _C.MISC.USE_IMLOSS = True
 _C.MISC.USE_AUG = True
+_C.MISC.TEACHER_AVG = True
 
 # ------------------------------- CUDNN options ------------------------------ #
 

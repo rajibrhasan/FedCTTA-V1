@@ -17,7 +17,7 @@ from robustbench.utils import load_model
 from sklearn.decomposition import PCA
 from methods.fed_avg import FedAvg
 from yacs.config import CfgNode as CfgNode
-from fed_utils import split_indices_into_batches, get_available_corruptions, get_dataset, create_schedule_iid, create_schedule_niid, cosine_similarity
+from fed_utils import split_indices_into_batches, get_available_corruptions, get_dataset, create_schedule_iid, create_schedule_niid, cosine_similarity, create_schedule_case_study
 from conf import cfg, load_cfg_fom_args
 
 
@@ -35,7 +35,7 @@ def process_acc(clients, printall):
         global_correct_st += sum(client.correct_preds['student'])
         global_correct_t += sum(client.correct_preds['teacher'])
         global_correct_m += sum(client.correct_preds['mixed'])
-        global_total += client.total_preds
+        global_total += sum(client.total_preds)
 
         client_acc_st = sum(client.correct_preds['student']) / sum(client.total_preds)*100
         client_acc_t = sum(client.correct_preds['teacher']) / sum(client.total_preds)*100
@@ -60,24 +60,24 @@ def process_acc(clients, printall):
     logger.info(f'Global accuracy(Mixed): {acc_m/len(clients) : 0.3f}')
 
 def process_grad(clients):
-    gloabal_grad = None
+    global_grad = None
     local_grads = []
     for client in clients:
         local_grads.append(client.get_grad())
-        if not gloabal_grad:
-            global_grad = local_grads[-1]
+        if global_grad is None:
+            global_grad = local_grads[-1].clone()
         else:
             global_grad += local_grads[-1]
-    
-    global_grad /= len(clients)
 
+    if global_grad is not None:
+        global_grad /= len(clients)
     differences = []
 
     for i in range(len(clients)):
         c_dif = torch.sum((global_grad - local_grads[i]) ** 2).item()
         differences.append(c_dif)
     
-    print(f'Gradient differences: {c_dif}')
+    print(f'Gradient differences: {differences}')
 
 
 def main(severity, device):
@@ -92,7 +92,7 @@ def main(severity, device):
     for i in range(cfg.FED.NUM_CLIENTS):
         clients.append(Client(f'client_{i}', deepcopy(global_model), cfg, device))
 
-    client_schedule = create_schedule_iid(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H)
+    client_schedule = create_schedule_case_study(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H)
   
     total_indices_sum = 0
     for t in tqdm(range(cfg.FED.NUM_STEPS)):
@@ -143,17 +143,25 @@ def main(severity, device):
                 # normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
                 # print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
 
-                if t % 399 == 0:
+                if t % (1/cfg.FED.TEMPORAL_H)== 0:
+
                     print(f'Timestep: {t} || Similarity Matrix')
                     print(normalized_similarity)
                     process_acc(clients, False)
                     process_grad(clients)
-    
+
 
                 # wandb.log({"similarity_mat": similarity_mat})
                 for i in range(len(clients)):
                     ww = FedAvg(w_locals, normalized_similarity[i])
                     clients[i].set_state_dict(deepcopy(ww))
+                
+                if cfg.MISC.TEACHER_AVG:
+                    w_locals_ema = [deepcopy(client.model_ema.state_dict()) for client in clients]
+                    w_avg = FedAvg(w_locals_ema)
+                    for client in clients:
+                        client.model_ema.load_state_dict(deepcopy(w_avg))
+
 
     process_acc(clients, True)
     print(total_indices_sum)

@@ -23,6 +23,62 @@ from conf import cfg, load_cfg_fom_args
 
 logger = logging.getLogger(__name__)
 
+def process_acc(clients, printall):
+    acc_st = 0
+    acc_t = 0
+    acc_m = 0
+    global_correct_st = 0
+    global_correct_t = 0
+    global_correct_m  = 0
+    global_total = 0
+    for client in clients:
+        global_correct_st += sum(client.correct_preds['student'])
+        global_correct_t += sum(client.correct_preds['teacher'])
+        global_correct_m += sum(client.correct_preds['mixed'])
+        global_total += client.total_preds
+
+        client_acc_st = sum(client.correct_preds['student']) / sum(client.total_preds)*100
+        client_acc_t = sum(client.correct_preds['teacher']) / sum(client.total_preds)*100
+        client_acc_m = sum(client.correct_preds['mixed']) / sum(client.total_preds)*100
+        acc_st += client_acc_st
+        acc_t += client_acc_t
+        acc_m += client_acc_m
+
+        if printall:
+            print(f'{client.name} Student accuracy: {client_acc_st : 0.3f}')
+            print(f'{client.name} Teacher accuracy: {client_acc_t: 0.3f}')
+            print(f'{client.name} Mixed accuracy: {client_acc_m: 0.3f}')
+    
+    print(f'Global accuracy(Student): {acc_st/len(clients) : 0.3f}')
+    print(f'Global accuracy(Teacher): {acc_t/len(clients) : 0.3f}')
+    print(f'Global accuracy(Mixed): {acc_m/len(clients) : 0.3f}')
+    print(f'Global Correct: {global_correct_st}(ST) || {global_correct_t}(T) ||{global_correct_m}(M)')
+    print(f'Global Total: {global_total}')
+
+    logger.info(f'Global accuracy(Student): {acc_st/len(clients) : 0.3f}')
+    logger.info(f'Global accuracy(Teacher): {acc_t/len(clients) : 0.3f}')
+    logger.info(f'Global accuracy(Mixed): {acc_m/len(clients) : 0.3f}')
+
+def process_grad(clients):
+    gloabal_grad = None
+    local_grads = []
+    for client in clients:
+        local_grads.append(client.get_grad())
+        if not gloabal_grad:
+            global_grad = client.get_grad()
+        else:
+            global_grad += client.get_grad()
+    
+    global_grad /= len(clients)
+
+    differences = []
+
+    for i in range(len(clients)):
+        c_dif = torch.sum((global_grad - local_grads[i]) ** 2).item()
+        differences.append(c_dif)
+    
+    print(f'Gradient differences: {c_dif}')
+
 
 def main(severity, device):
     print(f"==================Dataset: {cfg.CORRUPTION.DATASET} || Batch Size: {cfg.FED.BATCH_SIZE} || Adaptation: {cfg.MODEL.ADAPTATION} || IID : {cfg.FED.IID} || ADAPT_ALL : {cfg.MISC.ADAPT_ALL} || Similarity : {cfg.MISC.SIMILARITY}==================")
@@ -36,11 +92,8 @@ def main(severity, device):
     for i in range(cfg.FED.NUM_CLIENTS):
         clients.append(Client(f'client_{i}', deepcopy(global_model), cfg, device))
 
-    if cfg.FED.IID:
-        client_schedule = create_schedule_iid(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H)
-    else:
-        client_schedule = create_schedule_niid(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H, cfg.FED.SPATIAL_H)
-
+    client_schedule = create_schedule_iid(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H)
+  
     total_indices_sum = 0
     for t in tqdm(range(cfg.FED.NUM_STEPS)):
         w_locals = []
@@ -90,45 +143,24 @@ def main(severity, device):
                 # normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
                 # print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
 
-                # if t % int((1/ cfg.FED.TEMPORAL_H)) == 0:
-                #     print(f'Timestep: {t} || Similarity Matrix')
-                #     print(normalized_similarity)
+                if t % 399 == 0:
+                    print(f'Timestep: {t} || Similarity Matrix')
+                    print(normalized_similarity)
+                    process_acc(clients, False)
+                    process_grad(clients)
+    
 
                 # wandb.log({"similarity_mat": similarity_mat})
                 for i in range(len(clients)):
                     ww = FedAvg(w_locals, normalized_similarity[i])
                     clients[i].set_state_dict(deepcopy(ww))
-            
-    acc_st = 0
-    acc_t = 0
-    acc_m = 0
-    for client in clients:
-        client_acc_st = sum(client.correct_preds['student']) / sum(client.total_preds)*100
-        client_acc_t = sum(client.correct_preds['teacher']) / sum(client.total_preds)*100
-        client_acc_m = sum(client.correct_preds['mixed']) / sum(client.total_preds)*100
-        acc_st += client_acc_st
-        acc_t += client_acc_t
-        acc_m += client_acc_m
-        print(f'{client.name} Student accuracy: {client_acc_st : 0.3f}')
-        print(f'{client.name} Teacher accuracy: {client_acc_t: 0.3f}')
-        print(f'{client.name} Mixed accuracy: {client_acc_m: 0.3f}')
-    
-    print(f'Global accuracy(Student): {acc_st/len(clients) : 0.3f}')
-    print(f'Global accuracy(Teacher): {acc_t/len(clients) : 0.3f}')
-    print(f'Global accuracy(Mixed): {acc_m/len(clients) : 0.3f}')
 
-    logger.info(f'Global accuracy(Student): {acc_st/len(clients) : 0.3f}')
-    logger.info(f'Global accuracy(Teacher): {acc_t/len(clients) : 0.3f}')
-    logger.info(f'Global accuracy(Mixed): {acc_m/len(clients) : 0.3f}')
-
-
+    process_acc(clients, True)
     print(total_indices_sum)
-
 
 if __name__ == '__main__':
     load_cfg_fom_args("CIFAR-10C Evaluation")
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
     # ==========================================================================
     desc = f"Arch: {cfg.MODEL.ARCH} || Adaptation: {cfg.MODEL.ADAPTATION} || Similarity : {cfg.MISC.SIMILARITY}\n Dataset: {cfg.CORRUPTION.DATASET}  || Timesteps: {cfg.FED.NUM_STEPS} || Batch Size: {cfg.FED.BATCH_SIZE}\n IID: {cfg.FED.IID} || Temporal Heterogenity: {cfg.FED.TEMPORAL_H} || Spatial Heterogenity: {cfg.FED.SPATIAL_H}\n "
     wandb_api_key=os.environ.get('WANDB_API_KEY')

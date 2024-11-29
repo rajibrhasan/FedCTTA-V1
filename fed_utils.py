@@ -120,6 +120,28 @@ def create_schedule_iid(num_clients, timesteps, domains, temporal_h):
     client_schedule = [schedule for i in range(num_clients)]
     return client_schedule
 
+def create_schedule_case_study(num_clients, timesteps, domains, temporal_h):
+    time_interval = int(1/temporal_h)
+    seq1 = domains
+    seq2 = domains[::-1]
+    seq3 = domains[1:] + domains[:1]
+
+    seq1 = [item for item in seq1 for _ in range(time_interval)]
+    seq2 = [item for item in seq2 for _ in range(time_interval)]
+    seq3 = [item for item in seq3 for _ in range(time_interval)]
+
+    client_schedule = []
+
+    for i in range(4):
+      client_schedule.append(seq1)
+    
+    for i in range(3):
+      client_schedule.append(seq2)
+    
+    for i in range(3):
+      client_schedule.append(seq3)
+
+    return client_schedule
 
 def cosine_similarity(bn_params1, bn_params2):
     assert bn_params1.keys() == bn_params2.keys(), "Keys must match"

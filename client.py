@@ -185,6 +185,16 @@ class Client(object):
                 # bn_params[name] = weights
         return deepcopy(bn_params)
 
+    def get_grad(self):
+        gradients = []
+        for param in self.model.parameters():
+            if param.grad is not None:
+                gradients.append(param.grad.view(-1))  # Flatten each gradient tensor
+
+        # Concatenate all gradients
+        flat_gradients = torch.cat(gradients)
+        return flat_gradients
+
     def get_state_dict(self):
         return self.model.state_dict()
     

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import random
 from robustbench.data import load_cifar10c, load_cifar100c
+import torch.nn.functional as F
     
 @torch.no_grad()
 def ema_update_model(model_to_update, model_to_merge, momentum, device, update_all=False):
@@ -147,8 +148,23 @@ def cosine_similarity(bn_params1, bn_params2):
     assert bn_params1.keys() == bn_params2.keys(), "Keys must match"
     similarities = []
     for layer_name in bn_params1:
-        similarity = nn.functional.cosine_similarity(bn_params1[layer_name].reshape(1, -1), bn_params2[layer_name].reshape(1, -1), dim = 1)
-        similarity = torch.clamp(similarity, min=0, max=1)
+        params1 = bn_params1[layer_name] 
+        params2 = bn_params2[layer_name]
+        params1 = (params1 - params1.mean())/params1.std()
+        params2 = (params2 - params2.mean()) / params2.std()
+        similarity = F.cosine_similarity(params1.reshape(1,-1), params2.reshape(1, -1))
+        # similarity = torch.clamp(similarity, min=0, max=1)
         similarities.append(similarity.item())
     
     return sum(similarities)/len(similarities)
+
+
+def historical_similarity(probs_list, prob, coef):
+    current_t = len(probs_list)
+    sim = 0
+    for i in range(current_t):
+        sim += pow(coef, current_t - 1 - i) * F.cosine_similarity(probs_list[i].reshape(1,-1), prob.reshape(1,-1))
+    
+    return sim
+    
+

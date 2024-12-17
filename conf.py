@@ -118,6 +118,7 @@ _C.MISC.EMA_PROBS_TEMP = 0.1
 _C.MISC.USE_IMLOSS = True
 _C.MISC.USE_AUG = True
 _C.MISC.TEACHER_AVG = True
+_C.MISC.FORGETTING_RATIO = 0.5
 
 # ------------------------------- CUDNN options ------------------------------ #
 

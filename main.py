@@ -17,9 +17,9 @@ from robustbench.utils import load_model
 from sklearn.decomposition import PCA
 from methods.fed_avg import FedAvg
 from yacs.config import CfgNode as CfgNode
-from fed_utils import split_indices_into_batches, get_available_corruptions, get_dataset, create_schedule_iid, create_schedule_niid, cosine_similarity, create_schedule_case_study
+from fed_utils import split_indices_into_batches, get_available_corruptions, get_dataset, create_schedule_iid, create_schedule_niid, cosine_similarity, create_schedule_case_study , historical_similarity
 from conf import cfg, load_cfg_fom_args
-
+from sklearn.metrics import normalized_mutual_info_score
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +93,7 @@ def main(severity, device):
         clients.append(Client(f'client_{i}', deepcopy(global_model), cfg, device))
 
     client_schedule = create_schedule_case_study(cfg.FED.NUM_CLIENTS, cfg.FED.NUM_STEPS, cfg.CORRUPTION.TYPE, cfg.FED.TEMPORAL_H)
+    logger.info(client_schedule)
   
     total_indices_sum = 0
     for t in tqdm(range(cfg.FED.NUM_STEPS)):
@@ -118,11 +119,14 @@ def main(severity, device):
                 similarity_mat = torch.zeros((len(clients), len(clients)))
                 with torch.no_grad():
                     if cfg.MISC.SIMILARITY == 'ema_probs':
-                        probs_list = [client.class_probs_ema for client in clients]
+                        probs_list = [client.predictions for client in clients]
                         for i, prob1 in enumerate(probs_list):
                             for j, prob2 in enumerate(probs_list):
-                                similarity = F.cosine_similarity(prob1.reshape(1, -1), prob2.reshape(1,-1))
-                                similarity_mat[i, j] = similarity.item()
+                                # similarity = F.cosine_similarity(prob1.detach().reshape(1, -1), prob2.detach().reshape(1,-1))
+                                # similarity_mat[i, j] = similarity.item()
+                                # # similarity_mat[i, j] = normalized_mutual_info_score(prob1.detach().cpu(), prob2.detach().cpu())
+                                similarity_mat[i, j] = historical_similarity(prob2, prob1[-1], cfg.MISC.FORGETTING_RATIO)
+                              
 
                     elif cfg.MISC.SIMILARITY == 'weights':
                         params_list = [client.extract_bn_weights_and_biases() for client in clients]
@@ -130,7 +134,25 @@ def main(severity, device):
                             for j, params2 in enumerate(params_list):
                                 similarity = cosine_similarity(params1, params2)
                                 similarity_mat[i,j] = similarity
+
+                    elif cfg.MISC.SIMILARITY == 'pvec':
+                        pvec_list = [client.pvec for client in clients]
+                        for i, p1 in enumerate(pvec_list):
+                            for j, p2 in enumerate(pvec_list):
+                                similarity_mat[i, j] = historical_similarity(p2, p1[-1], cfg.MISC.FORGETTING_RATIO)
                     
+                    elif cfg.MISC.SIMILARITY == 'gradient':
+                        grad_list = [client.get_grad() for client in clients]
+                        for i, grad1 in enumerate(grad_list):
+                            for j, grad2 in enumerate(grad_list):
+                                similarity_mat[i, j] = F.cosine_similarity(grad1.reshape(1, -1), grad2.reshape(1, -1)).item()
+
+                    elif cfg.MISC.SIMILARITY == 'feat':
+                        feat_list = [client.features for client in clients]
+                        for i, feat1 in enumerate(feat_list):
+                            for j, feat2 in enumerate(feat_list):
+                                similarity_mat[i, j] = historical_similarity(feat2, feat1[-1], cfg.MISC.FORGETTING_RATIO)
+
                     else:
                         NotImplementedError(f"Similarity method {cfg.MISC.SIMILARITY} not implemented")
 
@@ -142,25 +164,24 @@ def main(severity, device):
                 # # exp_scaled_similarity = np.exp(scaled_similarity)  # Subtract max for numerical stability
                 # normalized_similarity = exp_scaled_similarity / np.sum(exp_scaled_similarity, axis=1, keepdims=True)
                 # print(f'Timestep: {t} / {cfg.FED.NUM_STEPS}')
+                print(f'Timestep: {t} || Similarity Matrix')
+                print(normalized_similarity)
+                # if (t+1) % (1/cfg.FED.TEMPORAL_H)== 0:
 
-                if (t+1) % (1/cfg.FED.TEMPORAL_H)== 0:
+                #     process_acc(clients, False)
+                #     process_grad(clients)
 
-                    print(f'Timestep: {t} || Similarity Matrix')
-                    print(normalized_similarity)
-                    process_acc(clients, False)
-                    process_grad(clients)
-
-
-                # wandb.log({"similarity_mat": similarity_mat})
-                for i in range(len(clients)):
-                    ww = FedAvg(w_locals, normalized_similarity[i])
-                    clients[i].set_state_dict(deepcopy(ww))
+                if t%10 == 0:
+                    # wandb.log({"similarity_mat": similarity_mat})
+                    for i in range(len(clients)):
+                        ww = FedAvg(w_locals, normalized_similarity[i])
+                        clients[i].set_state_dict(deepcopy(ww))
                 
-                if cfg.MISC.TEACHER_AVG:
-                    w_locals_ema = [deepcopy(client.model_ema.state_dict()) for client in clients]
-                    w_avg = FedAvg(w_locals_ema)
-                    for client in clients:
-                        client.model_ema.load_state_dict(deepcopy(w_avg))
+                # if cfg.MISC.TEACHER_AVG:
+                #     w_locals_ema = [deepcopy(client.model_ema.state_dict()) for client in clients]
+                #     w_avg = FedAvg(w_locals_ema)
+                #     for client in clients:
+                #         client.model_ema.load_state_dict(deepcopy(w_avg))
 
 
     process_acc(clients, True)

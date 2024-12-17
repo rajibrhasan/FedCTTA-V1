@@ -5,9 +5,11 @@ import numpy as np
 from copy import deepcopy
 from sklearn.decomposition import PCA
 from fed_utils import ema_update_model
-from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy, information_maximization_loss
+from losses import symmetric_cross_entropy, softmax_entropy_ema, softmax_entropy, information_maximization_loss, L2SPLoss
 from transforms_cotta import get_tta_transforms
 import wandb
+from sklearn.decomposition import PCA
+
 
 @torch.no_grad()
 def update_model_probs(x_ema, x, momentum=0.9):
@@ -40,13 +42,26 @@ class Client(object):
             'student': [],
             'teacher': [], 
             'mixed': []
-
         }
 
         self.domain_list = []
 
+        self.ce_loss = nn.CrossEntropyLoss()
+        self.l2_loss = L2SPLoss(self.model_state)
+        self.pvec = None
+        self.feat = None
+        self.predictions = []
+        self.features = []
+        self.pvec = []
+
+    def update_principal_vector(self, x):
+        pca = PCA(n_components=1)
+        projected_data = pca.fit_transform(x.reshape(len(x), -1))
+        pvec = pca.components_[0]
+        self.pvec.append(torch.tensor(pvec))
 
     def adapt(self, x, y):
+        self.update_principal_vector(x)
         self.optimizer.zero_grad()
         self.x = x
         self.y = y
@@ -54,10 +69,17 @@ class Client(object):
         self.model_ema.to(self.device)
         self.src_model.to(self.device)
 
-        outputs = self.model(self.x.to(self.device))
-        outputs_ema = self.model_ema(self.x.to(self.device))
+        feat, outputs = self.model(self.x.to(self.device))
+        _, outputs_ema = self.model_ema(self.x.to(self.device))
+        # anchor_prob = torch.nn.functional.softmax(self.src_model(x.to(self.device)), dim=1).max(1)[0]
 
-        anchor_prob = torch.nn.functional.softmax(self.src_model(x.to(self.device)), dim=1).max(1)[0]
+        self.predictions.append(outputs.detach().mean(0))
+        self.features.append(feat.detach().mean(0))
+
+        # if self.feat is None:
+        #     self.feat = feat.mean(0)
+        # else:
+        #     self.feat = update_model_probs(self.feat, feat)
 
         if self.cfg.MISC.USE_AUG and anchor_prob.mean(0)<self.cfg.OPTIM.AP:
             outputs_emas = []
@@ -67,12 +89,21 @@ class Client(object):
         
             outputs_ema = torch.stack(outputs_emas).mean(0)
 
-        loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+        # loss = symmetric_cross_entropy(outputs, outputs_ema).mean(0)
+        loss = softmax_entropy(outputs).mean(0)
+        # loss = self.ce_loss(outputs, y.to(self.device))
         im_loss = information_maximization_loss(outputs)
+        mse_loss = self.l2_loss(self.model)
 
+        wandb.log({f'{self.name}_L2': mse_loss})
+        
+        # if len(self.domain_list) % 10: 
+        #     print(f'{self.name}_l2_loss: ', mse_loss.item())
+
+    
         if self.cfg.MISC.USE_IMLOSS:
             loss += im_loss
-
+    
         loss.backward()
         self.optimizer.step()
         wandb.log({f'{self.name}_loss': loss.item()})
@@ -189,7 +220,7 @@ class Client(object):
         gradients = []
         for name, param in self.model.named_parameters():
             if param.grad is not None:
-                gradients.append(param.grad.view(-1))  # Flatten each gradient tensor
+                gradients.append(param.grad.clone().view(-1))  # Flatten each gradient tensor
 
         # Concatenate all gradients
         flat_gradients = torch.cat(gradients)
